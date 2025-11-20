@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import {
+  AuthModule,
   ProductModule,
   UserModule,
   CartModule,
@@ -13,6 +14,9 @@ import { GlobalPrismaModule } from '@infrastructure/prisma/prisma.module';
   imports: [
     // GLOBAL
     GlobalPrismaModule,
+
+    // AUTH MODULE
+    AuthModule,
 
     // APP MODULES
     ProductModule,
