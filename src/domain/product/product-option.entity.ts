@@ -15,8 +15,8 @@ export class ProductOption {
     public size: string | null,
     public stock: number,
     public reservedStock: number,
-    public readonly createdAt: Date,
-    public updatedAt: Date,
+    public readonly createdAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {
     this.validateStock();
   }

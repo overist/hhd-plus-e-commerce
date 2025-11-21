@@ -17,8 +17,8 @@ export class UserCoupon {
     public orderId: number | null,
     public readonly createdAt: Date,
     public usedAt: Date | null,
-    public readonly expiredAt: Date,
-    public updatedAt: Date,
+    public readonly expiredAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {}
 
   /**

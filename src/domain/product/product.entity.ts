@@ -12,8 +12,8 @@ export class Product {
     public price: number,
     public category: string,
     public isAvailable: boolean,
-    public readonly createdAt: Date,
-    public updatedAt: Date,
+    public readonly createdAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {
     this.validatePrice();
   }

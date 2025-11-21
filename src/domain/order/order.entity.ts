@@ -20,8 +20,8 @@ export class Order {
     public status: OrderStatus,
     public readonly createdAt: Date,
     public paidAt: Date | null,
-    public readonly expiredAt: Date,
-    public updatedAt: Date,
+    public readonly expiredAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {
     this.validateAmounts();
     this.validateExpiredAt();
