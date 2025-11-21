@@ -49,6 +49,15 @@ export class Order {
   }
 
   /**
+   * ANCHOR 사용자 소유 검증
+   */
+  validateOwnedBy(userId: number): void {
+    if (this.userId !== userId) {
+      throw new DomainException(ErrorCode.UNAUTHORIZED);
+    }
+  }
+
+  /**
    * ANCHOR 주문 만료 여부 확인
    */
   isExpired(): boolean {
@@ -124,5 +133,19 @@ export class Order {
    */
   isOwnedBy(userId: number): boolean {
     return this.userId === userId;
+  }
+
+  /**
+   * ANCHOR 결제 취소 (보상 트랜잭션용)
+   * 결제 실패 시 주문 상태를 PENDING으로 되돌림
+   */
+  cancelPayment(): void {
+    if (!this.status.isPaid()) {
+      throw new DomainException(ErrorCode.INVALID_ORDER_STATUS);
+    }
+
+    this.status = OrderStatus.PENDING;
+    this.paidAt = null;
+    this.updatedAt = new Date();
   }
 }

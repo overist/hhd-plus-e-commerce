@@ -86,4 +86,14 @@ export class ProductOption {
     this.stock = newStock;
     this.validateStock();
   }
+
+  /**
+   * ANCHOR 재고 복원 (보상 트랜잭션용)
+   * 결제 실패 시 확정 차감된 재고를 선점 상태로 되돌림
+   */
+  restoreStock(quantity: number): void {
+    this.stock += quantity;
+    this.reservedStock += quantity;
+    this.validateStock();
+  }
 }
