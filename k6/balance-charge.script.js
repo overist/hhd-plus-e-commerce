@@ -2,16 +2,18 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
-import { registerTestUser } from './common/setup.js';
+import { registerTestUser, loginTestUser } from './common/setup.js';
 
 // ** 경로 설정 **
 const BASE_URL = 'http://localhost:3000';
 const BALANCE_PATH = '/api/users';
+const CHARGES_PER_ITERATION = Number(__ENV.CHARGES_PER_ITERATION || 3);
 
 // ** 메트릭 정의 **
 const errorCount = new Counter('errors');
 const successRate = new Rate('success_rate');
 const balanceAfterCharge = new Trend('balance_after_charge');
+const chargeDuration = new Trend('balance_charge_duration');
 
 // ANCHOR STEP0: [CONFIG] k6 옵션 설정
 export const options = {
@@ -38,39 +40,41 @@ export const options = {
 
 // ANCHOR STEP1: [BEFORE] k6 set up before each VU
 export function setup() {
-  console.log('Starting balance charge load test...');
-  console.log('Each VU will create its own user session');
-  return {};
+  console.log('Starting balance charge load test with shared user...');
+  const sharedUser = registerTestUser();
+
+  if (!sharedUser) {
+    throw new Error('Failed to provision shared test user');
+  }
+
+  console.log(`Shared user prepared. userId=${sharedUser.userId}`);
+  return sharedUser;
 }
 
 // ANCHOR STEP2: [MAIN] k6 executed by each VU
-export default function () {
-  // 각 VU마다 새 사용자를 생성하고 세션을 받음
-  const result = registerTestUser();
-  if (!result) {
+export default function (sharedUser) {
+  const userId = sharedUser.userId;
+
+  const loginResult = loginTestUser(userId);
+  if (!loginResult) {
     errorCount.add(1);
-    console.error('User registration failed');
+    console.error(`Login failed for shared user ${userId}`);
+    sleep(1);
     return;
   }
 
-  const userId = result.userId;
-  const initialBalance = result.balance;
+  for (let attempt = 0; attempt < CHARGES_PER_ITERATION; attempt += 1) {
+    const chargeAmount = Math.floor(Math.random() * 50000) + 10000; // 10,000 ~ 60,000원 랜덤 충전
+    const { success, balance: latestBalance } = chargeBalance(
+      userId,
+      chargeAmount,
+    );
 
-  // 잔액 충전 테스트
-  const chargeAmount = Math.floor(Math.random() * 50000) + 10000; // 10,000 ~ 60,000원 랜덤 충전
-  const chargeSuccess = chargeBalance(userId, chargeAmount);
-
-  if (chargeSuccess) {
-    // 충전 성공 후 잔액 조회로 검증
-    const verifySuccess = verifyBalance(userId, initialBalance + chargeAmount);
-    if (!verifySuccess) {
-      console.warn(
-        `Balance verification failed for userId: ${userId}, expected: ${initialBalance + chargeAmount}`,
-      );
+    if (success && typeof latestBalance === 'number') {
+      verifyBalance(userId, latestBalance);
     }
   }
 
-  // VU별로 약간의 딜레이 추가 (실제 사용자 행동 시뮬레이션)
   sleep(Math.random() * 2 + 1); // 1~3초 사이 랜덤 대기
 }
 
@@ -92,33 +96,26 @@ function chargeBalance(userId, amount) {
     params,
   );
 
+  let parsedBody = null;
+  try {
+    parsedBody = JSON.parse(res.body);
+  } catch (err) {
+    console.error('Failed to parse balance charge response body', err);
+  }
+
   const success = check(res, {
     'balance charge status is 200': (r) => r.status === 200,
-    'balance charge returns userId': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body?.userId === userId;
-      } catch (err) {
-        console.error('Failed to parse balance charge response body', err);
-        return false;
-      }
-    },
-    'balance charge returns balance': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        const hasBalance = typeof body?.balance === 'number';
-        if (hasBalance) {
-          balanceAfterCharge.add(body.balance);
-        }
-        return hasBalance;
-      } catch (err) {
-        console.error('Failed to parse balance charge response body', err);
-        return false;
-      }
-    },
+    'balance charge returns userId': () => parsedBody?.userId === userId,
+    'balance charge returns balance': () =>
+      typeof parsedBody?.balance === 'number',
   });
 
   successRate.add(success);
+  chargeDuration.add(res.timings.duration);
+
+  if (success && typeof parsedBody?.balance === 'number') {
+    balanceAfterCharge.add(parsedBody.balance);
+  }
 
   if (!success) {
     errorCount.add(1);
@@ -127,19 +124,26 @@ function chargeBalance(userId, amount) {
     );
   }
 
-  return success;
+  return {
+    success,
+    balance:
+      typeof parsedBody?.balance === 'number' ? parsedBody.balance : null,
+  };
 }
 
 // LINK - 잔액 조회로 충전 검증 함수
-function verifyBalance(userId, expectedBalance) {
+function verifyBalance(userId, minExpectedBalance = 0) {
   const res = http.get(`${BASE_URL}${BALANCE_PATH}/${userId}/balance`);
 
   const success = check(res, {
     'balance verify status is 200': (r) => r.status === 200,
-    'balance verify matches expected': (r) => {
+    'balance verify not regressed': (r) => {
       try {
         const body = JSON.parse(r.body);
-        return body?.balance === expectedBalance;
+        if (typeof body?.balance !== 'number') {
+          return false;
+        }
+        return body.balance >= minExpectedBalance;
       } catch (err) {
         console.error('Failed to parse balance verify response body', err);
         return false;
@@ -157,6 +161,6 @@ function verifyBalance(userId, expectedBalance) {
 }
 
 // ANCHOR STEP3: [AFTER] k6 tear down after test
-export function teardown(data) {
+export function teardown() {
   console.log('Balance charge load test completed');
 }
