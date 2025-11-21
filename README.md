@@ -89,99 +89,197 @@ src/
 
 ## 🔒 동시성 제어
 
-### 구현 방식: Mutex 기반 Lock
+### 구현 방식: 비관적 잠금(Pessimistic Lock) + 낙관적 잠금(Optimistic Lock)
+
+현재 시스템은 **PostgreSQL 데이터베이스**와 **Prisma ORM**을 사용하여 트랜잭션 기반의 동시성 제어를 구현하고 있습니다.
+
+### 1. 비관적 잠금 (Pessimistic Lock)
 
 **적용 대상:**
 
-- 사용자 잔액 변경 (UserRepository)
-- 상품 재고 변경 (ProductOptionRepository)
-- 쿠폰 발급 수량 관리 (CouponRepository)
+- 상품 재고 관리 (`ProductOptionRepository`)
+- 쿠폰 발급 수량 관리 (`CouponRepository`)
 
-### 구현 세부사항
+**구현 방식: `SELECT ... FOR UPDATE`**
 
 ```typescript
-// MutexManager: ID별 Mutex 관리
-private readonly mutexManager = new MutexManager();
+// 트랜잭션 컨텍스트 내에서 FOR UPDATE 사용
+async findById(id: number): Promise<ProductOption | null> {
+  const tx = this.prisma.getTransactionClient();
 
-async save(entity: Entity): Promise<Entity> {
-  const unlock = await this.mutexManager.acquire(entityId);
-  try {
-    // 크리티컬 섹션: 데이터 읽기/쓰기
-  } finally {
-    unlock(); // 반드시 락 해제
+  if (tx) {
+    // 비관적 잠금: 행 레벨 락 획득
+    const recordList = await tx.$queryRaw`
+      SELECT * FROM product_options WHERE id = ${id} FOR UPDATE
+    `;
+    return recordList.length > 0 ? this.mapToDomain(recordList[0]) : null;
+  }
+
+  return await this.prismaClient.product_options.findUnique({ where: { id } });
+}
+```
+
+**동작 원리:**
+
+1. 트랜잭션 시작 시 `FOR UPDATE`로 행(row) 레벨 락 획득
+2. 다른 트랜잭션은 해당 행에 대해 대기 (직렬화)
+3. 트랜잭션 커밋/롤백 시 자동으로 락 해제
+4. 데이터베이스 레벨에서 동시성 보장
+
+**적용 시나리오:**
+
+- 주문 생성 시 재고 선점 (`reserveProductsForOrder`)
+- 결제 완료 시 재고 확정 차감 (`confirmPaymentStock`)
+- 쿠폰 발급 시 수량 차감 (`issueCouponToUser`)
+
+### 2. 낙관적 잠금 (Optimistic Lock)
+
+**적용 대상:**
+
+- 사용자 잔액 변경 (`UserRepository`)
+
+**구현 방식: `version` 필드 + 재시도 로직**
+
+```typescript
+// version 필드를 통한 낙관적 잠금
+async update(user: User): Promise<User> {
+  const updated = await this.prismaClient.users.updateMany({
+    where: {
+      id: user.id,
+      version: user.version, // 현재 version으로 조건 검사
+    },
+    data: {
+      balance: user.balance,
+      version: user.version + 1, // version 증가
+      updated_at: user.updatedAt,
+    },
+  });
+
+  if (updated.count === 0) {
+    throw new Error('Optimistic lock error: User update failed by version');
+  }
+
+  return await this.findById(user.id);
+}
+```
+
+**재시도 로직:**
+
+```typescript
+// 도메인 서비스에서 재시도 처리 (최대 10회)
+async chargeUser(userId: number, amount: number): Promise<User> {
+  const maxRetries = 10;
+  let attempt = 0;
+
+  while (attempt < maxRetries) {
+    try {
+      const user = await this.getUser(userId);
+      const { user: updatedUser, log } = user.charge(amount);
+
+      await this.userRepository.update(updatedUser);
+      await this.balanceLogRepository.create(log);
+
+      return updatedUser;
+    } catch (error) {
+      attempt++;
+      if (attempt >= maxRetries) throw error;
+
+      // Exponential Backoff
+      await new Promise(resolve =>
+        setTimeout(resolve, Math.pow(2, attempt) * 10)
+      );
+    }
   }
 }
 ```
 
 **동작 원리:**
 
-1. 리소스 ID별로 독립적인 Mutex 생성 및 관리
-2. 동일 ID에 대한 동시 요청은 직렬화 (순차 처리)
-3. 다른 ID는 병렬 처리 가능
-4. 사용 완료 후 자동 정리 (메모리 최적화)
+1. 엔티티 조회 시 현재 `version` 값 함께 조회
+2. 업데이트 시 `WHERE version = {current_version}` 조건 추가
+3. version이 일치하지 않으면 업데이트 실패 (동시 수정 감지)
+4. 실패 시 재시도 (Exponential Backoff 적용)
 
-### ⚠️ **중요: 한계점 및 실무 적용 시 주의사항**
+**적용 시나리오:**
 
-#### 1. **트랜잭션 미지원**
+- 사용자 잔액 충전 (`chargeUser`)
+- 사용자 잔액 차감 (`deductUser`)
 
-현재 인메모리 구현은 **트랜잭션(Transaction)을 보장하지 않습니다.**
+### 3. 트랜잭션 경계 및 보상 트랜잭션
 
-**문제 상황 예시:**
+**트랜잭션 관리: Facade 계층**
 
 ```typescript
-// 주문 생성 시나리오
-1. 재고 차감 ✅
-2. 잔액 차감 ✅
-3. 주문 생성 ❌ (실패)
-// → 재고와 잔액은 이미 차감되었으나 주문은 생성되지 않음
-// → 데이터 불일치 발생!
+// 주문 생성: 재고 선점 + 주문 생성 원자적 처리
+async createOrder(userId: number, items: OrderItemInput[]): Promise<OrderCreateView> {
+  return await this.prisma.runInTransaction(async () => {
+    // 1. 재고 선점 (비관적 잠금)
+    const orderItemsData = await this.productService.reserveProductsForOrder(items);
+
+    // 2. 주문 생성
+    const createdOrder = await this.orderService.createPendingOrder(userId, totalAmount);
+
+    // 3. 주문 항목 생성
+    const createdOrderItems = await this.orderService.createOrderItems(createdOrder.id, orderItemsData);
+
+    return orderView;
+  });
+}
 ```
 
-**해결 방법:**
+**보상 트랜잭션: 결제 실패 시 롤백**
 
-- 실무에서는 **데이터베이스 트랜잭션 필수**
-- ACID 속성 보장 필요
-- Rollback 메커니즘 구현 필요
+```typescript
+async processPayment(orderId: number, userId: number, userCouponId?: number): Promise<OrderPaymentView> {
+  try {
+    // 1단계: 트랜잭션 - 쿠폰 사용 + 주문 상태 변경 + 재고 확정
+    await this.prisma.runInTransaction(async () => {
+      // 쿠폰 적용 (비관적 잠금)
+      // 주문 상태 변경
+      // 재고 확정 차감
+    });
 
-#### 2. **데이터베이스 사용 필수**
+    // 2단계: 트랜잭션 외부 - 사용자 잔액 차감 (낙관적 잠금)
+    const user = await this.userService.deductUser(userId, paymentAmount);
 
-**현재 구현 (인메모리)의 한계:**
+    return paymentView;
+  } catch (error) {
+    // 3단계: 보상 트랜잭션 - 롤백 처리
+    await this.compensatePaymentFailure(orderId, appliedUserCouponId);
+    throw error;
+  }
+}
+```
 
-- ❌ 서버 재시작 시 데이터 손실
-- ❌ 다중 서버 환경에서 동시성 제어 불가능
-- ❌ 트랜잭션 보장 안 됨
-- ❌ Durability(영속성) 없음
+### 동시성 제어 전략 선택 기준
 
-**실무 환경 필수 요구사항:**
+| 구분          | 비관적 잠금              | 낙관적 잠금               |
+| ------------- | ------------------------ | ------------------------- |
+| **사용 시기** | 충돌 빈도가 높을 때      | 충돌 빈도가 낮을 때       |
+| **적용 대상** | 재고, 쿠폰 수량          | 사용자 잔액               |
+| **성능**      | 락 대기로 인한 지연 발생 | 충돌 시 재시도로 오버헤드 |
+| **장점**      | 데이터 일관성 강력 보장  | 높은 동시성, 데드락 없음  |
+| **단점**      | 동시성 낮음, 데드락 가능 | 재시도 로직 필요          |
 
-- ✅ **관계형 데이터베이스 필수** (PostgreSQL, MySQL 등)
-- ✅ **데이터베이스 레벨 Lock** (SELECT FOR UPDATE, Optimistic/Pessimistic Lock)
-- ✅ **트랜잭션 격리 수준** 설정 (Isolation Level)
-- ✅ **분산 환경 고려** (Redis Lock, DB Lock 등)
+### ⚠️ 분산 환경 고려사항
 
-#### 3. **분산 환경 미지원**
+현재 구현은 **단일 데이터베이스 인스턴스 기준**입니다.
 
-현재 Mutex는 **단일 서버 인스턴스 내에서만 작동**합니다.
-
-**다중 서버 환경에서 필요한 것:**
+**다중 서버 환경 (이미 지원):**
 
 ```
 Server 1 ─┐
-Server 2 ─┼─→ Redis Lock / Database Lock
+Server 2 ─┼─→ PostgreSQL (단일 DB 인스턴스)
 Server 3 ─┘
 ```
 
-### 실무 전환 체크리스트
+✅ DB 레벨 락이므로 여러 애플리케이션 서버에서도 동시성 제어 가능
 
-프로덕션 환경 배포 전 반드시 구현해야 할 사항:
+**분산 DB 환경 (추가 구현 필요):**
 
-- [ ] **데이터베이스 도입** (PostgreSQL/MySQL)
-- [ ] **트랜잭션 적용** (@Transactional 또는 BEGIN/COMMIT)
-- [ ] **DB 락 메커니즘** (SELECT FOR UPDATE, Row Lock)
-- [ ] **분산 락** (Redis, Redlock 등)
-- [ ] **재시도 로직** (Retry with Exponential Backoff)
-- [ ] **데드락 감지 및 해결**
-- [ ] **모니터링 및 알림** (Lock 대기 시간, 타임아웃)
+- Redis 분산 락 (Redlock 알고리즘)
+- DB 샤딩 시 분산 트랜잭션 관리
+- Saga 패턴 또는 2PC(Two-Phase Commit)
 
 ## 📊 **테스트 및 품질**
 
