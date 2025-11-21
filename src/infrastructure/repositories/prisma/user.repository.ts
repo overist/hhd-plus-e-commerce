@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   IUserRepository,
   IUserBalanceChangeLogRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/user.repository.interface';
 import { User } from '@domain/user/user.entity';
 import { UserBalanceChangeLog } from '@domain/user/user-balance-change-log.entity';
 import { Prisma } from '@prisma/client';

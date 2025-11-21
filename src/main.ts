@@ -5,10 +5,8 @@ import session from 'express-session';
 import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
 import { AppModule } from './app.module';
-import {
-  DomainExceptionFilter,
-  ValidationExceptionFilter,
-} from './presentation/common/filters';
+import { DomainExceptionFilter } from './presentation/common/filters/domain-exception.filter';
+import { ValidationExceptionFilter } from './presentation/common/filters/validation-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

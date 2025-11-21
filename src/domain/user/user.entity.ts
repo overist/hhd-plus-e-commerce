@@ -2,7 +2,7 @@ import { ErrorCode } from '@domain/common/constants/error-code';
 import {
   DomainException,
   ValidationException,
-} from '@domain/common/exceptions';
+} from '@domain/common/exceptions/domain.exception';
 import {
   UserBalanceChangeLog,
   BalanceChangeCode,

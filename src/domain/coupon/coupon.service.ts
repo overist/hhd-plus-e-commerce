@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { DomainException } from '@domain/common/exceptions';
+import { DomainException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 import { Coupon } from './coupon.entity';
 import { UserCoupon } from './user-coupon.entity';
-import { ICouponRepository, IUserCouponRepository } from '@domain/interfaces';
+import {
+  ICouponRepository,
+  IUserCouponRepository,
+} from '@domain/interfaces/coupon.repository.interface';
 
 /**
  * CouponDomainService

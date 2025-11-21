@@ -1,18 +1,21 @@
 import { Module } from '@nestjs/common';
 import { OrderFacade } from '@application/facades/order.facade';
-import { OrderDomainService } from '@domain/order';
-import { ProductDomainService } from '@domain/product';
-import { UserDomainService } from '@domain/user';
-import { CouponDomainService } from '@domain/coupon';
+import { OrderDomainService } from '@domain/order/order.service';
+import { ProductDomainService } from '@domain/product/product.service';
+import { UserDomainService } from '@domain/user/user.service';
+import { CouponDomainService } from '@domain/coupon/coupon.service';
 import { ProductModule } from './product.module';
 import { UserModule } from './user.module';
 import { CouponModule } from './coupon.module';
-import { IOrderRepository, IOrderItemRepository } from '@domain/interfaces';
+import {
+  IOrderRepository,
+  IOrderItemRepository,
+} from '@domain/interfaces/order.repository.interface';
 import {
   OrderRepository,
   OrderItemRepository,
-} from '@infrastructure/repositories/prisma';
-import { OrderController } from '@presentation/order';
+} from '@infrastructure/repositories/prisma/order.repository';
+import { OrderController } from '@presentation/order/order.controller';
 
 /**
  * Order Module

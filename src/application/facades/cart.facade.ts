@@ -1,7 +1,10 @@
 // CART FACADE
 
-import { CartDomainService, CartItem } from '@domain/cart';
-import { Product, ProductDomainService, ProductOption } from '@domain/product';
+import { CartDomainService } from '@domain/cart/cart.service';
+import { CartItem } from '@domain/cart/cart-item.entity';
+import { Product } from '@domain/product/product.entity';
+import { ProductDomainService } from '@domain/product/product.service';
+import { ProductOption } from '@domain/product/product-option.entity';
 import { Injectable } from '@nestjs/common';
 
 export interface CartItemView {

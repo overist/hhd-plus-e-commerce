@@ -5,7 +5,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { DomainException } from '@domain/common/exceptions';
+import { DomainException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 
 /**

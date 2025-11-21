@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ICartRepository } from '@domain/interfaces';
+import { ICartRepository } from '@domain/interfaces/cart.repository.interface';
 import { CartItem } from '@domain/cart/cart-item.entity';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@infrastructure/prisma/prisma.service';

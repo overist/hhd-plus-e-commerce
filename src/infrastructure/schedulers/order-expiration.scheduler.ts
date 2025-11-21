@@ -3,9 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   IOrderRepository,
   IOrderItemRepository,
-  IProductOptionRepository,
-} from '@domain/interfaces';
-import { OrderStatus } from '@domain/order';
+} from '@domain/interfaces/order.repository.interface';
+import { IProductOptionRepository } from '@domain/interfaces/product.repository.interface';
 
 /**
  * Order Expiration Scheduler

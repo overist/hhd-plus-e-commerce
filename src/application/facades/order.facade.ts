@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { OrderDomainService, OrderItem } from '@domain/order';
-import { CouponDomainService } from '@domain/coupon';
-import { UserDomainService } from '@domain/user';
-import { ProductDomainService } from '@domain/product';
-import { ValidationException } from '@domain/common/exceptions';
+import { OrderDomainService } from '@domain/order/order.service';
+import { OrderItem } from '@domain/order/order-item.entity';
+import { CouponDomainService } from '@domain/coupon/coupon.service';
+import { UserDomainService } from '@domain/user/user.service';
+import { ProductDomainService } from '@domain/product/product.service';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 import { PrismaService } from '@infrastructure/prisma/prisma.service';
 
@@ -147,12 +148,13 @@ export class OrderFacade {
     try {
       // 1단계: 트랜잭션 - 쿠폰 사용 + 주문 상태 변경 + 재고 확정
       await this.prisma.runInTransaction(async () => {
-        // 주문 조회 및 소유권 확인
+        // 주문 조회 (비관적 잠금)
         const order = await this.orderService.getOrder(orderId);
         order.validateOwnedBy(userId);
 
-        // 쿠폰 적용 (비관적 잠금)
+        // 쿠폰 요청
         if (userCouponId) {
+          // 쿠폰 조회 (비관적 잠금)
           const userCoupon =
             await this.couponService.getUserCoupon(userCouponId);
           const coupon = await this.couponService.getCoupon(
@@ -175,6 +177,7 @@ export class OrderFacade {
         await this.orderService.updateOrder(order);
 
         // 재고 확정 차감 (선점 → 확정)
+        // 재고 조회 (비관적 잠금)
         const orderItems = await this.orderService.getOrderItems(orderId);
         for (const item of orderItems) {
           await this.productService.confirmPaymentStock(

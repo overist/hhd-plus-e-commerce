@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { CartFacade } from '@application/facades/cart.facade';
-import { CartDomainService } from '@domain/cart';
-import { ProductDomainService } from '@domain/product';
+import { CartDomainService } from '@domain/cart/cart.service';
+import { ProductDomainService } from '@domain/product/product.service';
 import { ProductModule } from './product.module';
-import { ICartRepository } from '@domain/interfaces';
-import { CartRepository } from '@infrastructure/repositories/prisma';
-import { CartController } from '@presentation/cart';
+import { ICartRepository } from '@domain/interfaces/cart.repository.interface';
+import { CartRepository } from '@infrastructure/repositories/prisma/cart.repository';
+import { CartController } from '@presentation/cart/cart.controller';
 
 /**
  * Cart Module

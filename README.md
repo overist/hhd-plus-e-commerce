@@ -21,31 +21,26 @@ src/
 ├── domain/                # 도메인 계층
 │   ├── cart/             # 장바구니 엔티티, 도메인 서비스
 │   │   ├── cart-item.entity.ts
-│   │   ├── cart.service.ts
-│   │   └── index.ts
+│   │   └── cart.service.ts
 │   ├── coupon/           # 쿠폰, 사용자쿠폰 엔티티, 도메인 서비스
 │   │   ├── coupon.entity.ts
 │   │   ├── user-coupon.entity.ts
-│   │   ├── coupon.service.ts
-│   │   └── index.ts
+│   │   └── coupon.service.ts
 │   ├── order/            # 주문, 주문상품 엔티티, 도메인 서비스
 │   │   ├── order.entity.ts
 │   │   ├── order-item.entity.ts
 │   │   ├── order-status.vo.ts
 │   │   ├── transaction-out-failure-log.entity.ts
-│   │   ├── order.service.ts
-│   │   └── index.ts
+│   │   └── order.service.ts
 │   ├── product/          # 상품, 상품옵션, 인기상품스냅샷 엔티티, 도메인 서비스
 │   │   ├── product.entity.ts
 │   │   ├── product-option.entity.ts
 │   │   ├── product-popularity-snapshot.entity.ts
-│   │   ├── product.service.ts
-│   │   └── index.ts
+│   │   └── product.service.ts
 │   ├── user/             # 사용자, 잔액변경로그 엔티티, 도메인 서비스
 │   │   ├── user.entity.ts
 │   │   ├── user-balance-change-log.entity.ts
-│   │   ├── user.service.ts
-│   │   └── index.ts
+│   │   └── user.service.ts
 │   ├── common/           # 공통 도메인 예외, 에러코드 상수
 │   │   ├── exceptions/
 │   │   └── constants/

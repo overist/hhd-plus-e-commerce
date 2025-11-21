@@ -1,4 +1,4 @@
-import { UserDomainService } from '@domain/user';
+import { UserDomainService } from '@domain/user/user.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/prisma/prisma.service';
 

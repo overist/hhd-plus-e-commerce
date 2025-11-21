@@ -11,7 +11,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PrismaService } from '@infrastructure/prisma/prisma.service';
-import { SignupResponseDto, LoginRequestDto, LoginResponseDto } from './dto';
+import { SignupResponseDto } from './dto/signup.dto';
+import { LoginRequestDto, LoginResponseDto } from './dto/login.dto';
 
 /**
  * Auth Controller (테스트용)

@@ -14,8 +14,8 @@ import { CouponFacade } from '@application/facades/coupon.facade';
 import {
   IssueCouponRequestDto,
   IssueCouponResponseDto,
-  GetUserCouponsResponseDto,
-} from './dto';
+} from './dto/issue-coupon.dto';
+import { GetUserCouponsResponseDto } from './dto/get-user-coupons.dto';
 
 /**
  * Coupon Controller

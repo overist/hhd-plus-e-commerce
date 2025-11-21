@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { IOrderRepository, IOrderItemRepository } from '@domain/interfaces';
+import {
+  IOrderRepository,
+  IOrderItemRepository,
+} from '@domain/interfaces/order.repository.interface';
 import { Order } from '@domain/order/order.entity';
 import { OrderItem } from '@domain/order/order-item.entity';
 import { OrderStatus } from '@domain/order/order-status.vo';
@@ -19,8 +22,19 @@ export class OrderRepository implements IOrderRepository {
 
   // ANCHOR findById
   async findById(id: number): Promise<Order | null> {
+    const tx = this.prisma.getTransactionClient();
+
+    // 트랜잭션 컨텍스트가 있으면 FOR UPDATE 사용
+    if (tx) {
+      const recordList: any[] =
+        await tx.$queryRaw`SELECT * FROM orders WHERE id = ${id} FOR UPDATE`;
+      const record = recordList.length > 0 ? recordList[0] : null;
+      return record ? this.mapToDomain(record) : null;
+    }
+
+    // 트랜잭션 컨텍스트가 없으면 일반 조회
     const record = await this.prismaClient.orders.findUnique({
-      where: { id: BigInt(id) },
+      where: { id },
     });
     return record ? this.mapToDomain(record) : null;
   }
