@@ -20,8 +20,8 @@ export class Order {
     public status: OrderStatus,
     public readonly createdAt: Date,
     public paidAt: Date | null,
-    public readonly expiredAt: Date,
-    public updatedAt: Date,
+    public readonly expiredAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {
     this.validateAmounts();
     this.validateExpiredAt();
@@ -45,6 +45,15 @@ export class Order {
   private validateExpiredAt(): void {
     if (this.expiredAt <= this.createdAt) {
       throw new ValidationException(ErrorCode.INVALID_ARGUMENT);
+    }
+  }
+
+  /**
+   * ANCHOR 사용자 소유 검증
+   */
+  validateOwnedBy(userId: number): void {
+    if (this.userId !== userId) {
+      throw new DomainException(ErrorCode.UNAUTHORIZED);
     }
   }
 
@@ -124,5 +133,19 @@ export class Order {
    */
   isOwnedBy(userId: number): boolean {
     return this.userId === userId;
+  }
+
+  /**
+   * ANCHOR 결제 취소 (보상 트랜잭션용)
+   * 결제 실패 시 주문 상태를 PENDING으로 되돌림
+   */
+  cancelPayment(): void {
+    if (!this.status.isPaid()) {
+      throw new DomainException(ErrorCode.INVALID_ORDER_STATUS);
+    }
+
+    this.status = OrderStatus.PENDING;
+    this.paidAt = null;
+    this.updatedAt = new Date();
   }
 }

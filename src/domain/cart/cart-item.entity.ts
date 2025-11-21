@@ -14,8 +14,8 @@ export class CartItem {
     public readonly userId: number,
     public readonly productOptionId: number,
     public quantity: number,
-    public readonly createdAt: Date,
-    public updatedAt: Date,
+    public readonly createdAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {
     this.validateQuantity();
   }

@@ -61,6 +61,7 @@ export class UserDomainService {
 
   /**
    * ANCHOR 잔액 충전 처리
+   * 낙관적 잠금 재시도 로직
    */
   async chargeUser(
     userId: number,
@@ -68,13 +69,31 @@ export class UserDomainService {
     refId?: number,
     note?: string,
   ): Promise<User> {
-    const _user = await this.getUser(userId);
-    const { user, log } = _user.charge(amount, refId, note); // Log도 함께 생성
+    // 낙관적 잠금 재시도 로직
+    const maxRetries = 10;
+    let attempt = 0;
 
-    await this.userRepository.update(user);
-    await this.balanceLogRepository.create(log);
+    while (attempt < maxRetries) {
+      try {
+        const _user = await this.getUser(userId);
+        const { user, log } = _user.charge(amount, refId, note);
 
-    return user;
+        await this.userRepository.update(user);
+        await this.balanceLogRepository.create(log);
+
+        return user;
+      } catch (error) {
+        attempt++;
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 10),
+        );
+      }
+    }
+
+    throw new Error('Unexpected error in chargeUser');
   }
 
   /**
@@ -86,13 +105,31 @@ export class UserDomainService {
     refId?: number,
     note?: string,
   ): Promise<User> {
-    const _user = await this.getUser(userId);
-    const { user, log } = _user.deduct(amount, refId, note); // Log도 함께 생성
+    // 낙관적 잠금 재시도 로직
+    const maxRetries = 10;
+    let attempt = 0;
 
-    await this.userRepository.update(user);
-    await this.balanceLogRepository.create(log);
+    while (attempt < maxRetries) {
+      try {
+        const _user = await this.getUser(userId);
+        const { user, log } = _user.deduct(amount, refId, note);
 
-    return user;
+        await this.userRepository.update(user);
+        await this.balanceLogRepository.create(log);
+
+        return user;
+      } catch (error) {
+        attempt++;
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 10),
+        );
+      }
+    }
+
+    throw new Error('Unexpected error in deductUser');
   }
 
   /**

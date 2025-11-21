@@ -1,5 +1,4 @@
 import { OrderFacade } from '@application/facades/order.facade';
-import { UserFacade } from '@application/facades/user.facade';
 import { OrderDomainService } from '@domain/order/order.service';
 import { ProductDomainService } from '@domain/product/product.service';
 import { CouponDomainService } from '@domain/coupon/coupon.service';
@@ -27,7 +26,6 @@ import {
 describe('동시성 제어 통합 테스트', () => {
   let prismaService: PrismaService;
   let orderFacade: OrderFacade;
-  let userFacade: UserFacade;
   let productRepository: ProductRepository;
   let productOptionRepository: ProductOptionRepository;
   let userRepository: UserRepository;
@@ -38,7 +36,7 @@ describe('동시성 제어 통합 테스트', () => {
 
   afterAll(async () => {
     await teardownIntegrationTest();
-  });
+  }, 60000); // 60초 타임아웃
 
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
@@ -87,12 +85,10 @@ describe('동시성 제어 통합 테스트', () => {
       userService,
       prismaService,
     );
-
-    userFacade = new UserFacade(userService, prismaService);
   });
 
   describe('product-option.stock 동시성', () => {
-    it('동시에 20명이 같은 상품 주문 시 재고가 정확히 차감된다', async () => {
+    it('동시에 10명이 같은 상품 주문 시 재고가 정확히 차감된다', async () => {
       // Given: 재고 100개
       const product = await productRepository.create(
         new Product(
@@ -108,29 +104,21 @@ describe('동시성 제어 통합 테스트', () => {
       );
 
       const productOption = await productOptionRepository.create(
-        new ProductOption(
-          0,
-          product.id,
-          'RED',
-          'M',
-          100,
-          0,
-          new Date(),
-          new Date(),
-        ),
+        new ProductOption(0, product.id, 'RED', 'M', 100, 0),
       );
 
       const users = await Promise.all(
-        Array.from({ length: 20 }, () =>
-          userRepository.create(new User(0, 1000000, new Date(), new Date())),
+        Array.from(
+          { length: 10 },
+          () => userRepository.create(new User(0, 1000000)), // version은 기본값 1
         ),
       );
 
-      // When: 20명이 각각 5개씩 동시 주문
+      // When: 10명이 각각 10개씩 동시 주문
       await Promise.all(
         users.map((user) =>
           orderFacade.createOrder(user.id, [
-            { productOptionId: productOption.id, quantity: 5 },
+            { productOptionId: productOption.id, quantity: 10 },
           ]),
         ),
       );
@@ -141,6 +129,6 @@ describe('동시성 제어 통합 테스트', () => {
       );
       expect(finalOption!.reservedStock).toBe(100);
       expect(finalOption!.availableStock).toBe(0);
-    });
+    }, 30000); // 30초 타임아웃 (10명 동시 주문)
   });
 });

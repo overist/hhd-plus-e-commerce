@@ -132,61 +132,126 @@ export class OrderFacade {
 
   /**
    * ANCHOR 결제 처리
-   * 트랜잭션으로 쿠폰 사용 + 잔액 차감 + 결제 처리 + 재고 확정을 원자적으로 처리
+   * 트랜잭션으로 쿠폰 사용 + 결제 처리 + 재고 확정을 원자적으로 처리
+   * 유저 포인트 차감은 낙관적 잠금이므로 트랜잭션 밖에서 처리하고,
+   * 실패 시 보상 트랜잭션을 통해 쿠폰/주문/재고를 롤백
    */
   async processPayment(
     orderId: number,
     userId: number,
     userCouponId?: number,
   ): Promise<OrderPaymentView> {
-    return await this.prisma.runInTransaction(async () => {
-      // 주문 조회 및 소유권 확인
-      const order = await this.orderService.getOrder(orderId);
-      if (!order.isOwnedBy(userId)) {
-        throw new ValidationException(ErrorCode.UNAUTHORIZED);
-      }
+    let paymentAmount = 0;
+    let appliedUserCouponId: number | null = null;
 
-      // 쿠폰 적용 (선택사항)
-      if (userCouponId) {
-        const userCoupon = await this.couponService.getUserCoupon(userCouponId);
-        const coupon = await this.couponService.getCoupon(userCoupon.couponId);
+    try {
+      // 1단계: 트랜잭션 - 쿠폰 사용 + 주문 상태 변경 + 재고 확정
+      await this.prisma.runInTransaction(async () => {
+        // 주문 조회 및 소유권 확인
+        const order = await this.orderService.getOrder(orderId);
+        order.validateOwnedBy(userId);
 
-        // 쿠폰 사용 처리 및 할인 적용
-        userCoupon.use(orderId);
-        const discountAmount = coupon.calculateDiscount(order.totalAmount);
-        order.applyCoupon(coupon.id, discountAmount);
+        // 쿠폰 적용 (비관적 잠금)
+        if (userCouponId) {
+          const userCoupon =
+            await this.couponService.getUserCoupon(userCouponId);
+          const coupon = await this.couponService.getCoupon(
+            userCoupon.couponId,
+          );
 
-        await this.couponService.updateUserCoupon(userCoupon);
-      }
+          // 쿠폰 사용 처리 및 할인 적용
+          userCoupon.use(orderId);
+          const discountAmount = coupon.calculateDiscount(order.totalAmount);
+          order.applyCoupon(coupon.id, discountAmount);
 
-      // 사용자 잔액 차감 (먼저 실행 - 실패 시 트랜잭션 롤백)
+          await this.couponService.updateUserCoupon(userCoupon);
+          appliedUserCouponId = userCoupon.id;
+        }
+
+        paymentAmount = order.finalAmount;
+
+        // 결제 처리
+        order.pay();
+        await this.orderService.updateOrder(order);
+
+        // 재고 확정 차감 (선점 → 확정)
+        const orderItems = await this.orderService.getOrderItems(orderId);
+        for (const item of orderItems) {
+          await this.productService.confirmPaymentStock(
+            item.productOptionId,
+            item.quantity,
+          );
+        }
+      });
+
+      // 2단계: 트랜잭션 외부 - 사용자 잔액 차감 (낙관적 잠금)
       const user = await this.userService.deductUser(
         userId,
-        order.finalAmount,
+        paymentAmount,
         orderId,
         `주문 ${orderId} 결제`,
       );
 
-      // 결제 처리
-      order.pay();
+      return {
+        orderId,
+        status: 'PAID',
+        paidAmount: paymentAmount,
+        remainingBalance: user.balance,
+        paidAt: new Date(),
+      };
+    } catch (error) {
+      // 3단계: 보상 트랜잭션 - 유저 포인트 차감 실패 시 롤백
+      if (paymentAmount > 0) {
+        await this.compensatePaymentFailure(orderId, appliedUserCouponId).catch(
+          (compensationError) => {
+            // 보상 트랜잭션 실패는 로깅하고 원래 에러를 전파
+            console.error(
+              `보상 트랜잭션 실패 - orderId: ${orderId}`,
+              compensationError,
+            );
+          },
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * 결제 실패 시 보상 트랜잭션
+   * - 주문 상태를 PENDING으로 되돌림
+   * - 쿠폰 사용 취소
+   * - 재고 복원 (확정 차감 → 선점 상태로 복원)
+   */
+  private async compensatePaymentFailure(
+    orderId: number,
+    appliedUserCouponId: number | null,
+  ): Promise<void> {
+    await this.prisma.runInTransaction(async () => {
+      // 주문 조회
+      const order = await this.orderService.getOrder(orderId);
+
+      // 주문 상태를 PENDING으로 되돌림
+      order.cancelPayment();
       await this.orderService.updateOrder(order);
 
-      // 재고 확정 차감 (선점 → 확정)
+      // 쿠폰 사용 취소
+      if (appliedUserCouponId) {
+        const userCoupon =
+          await this.couponService.getUserCoupon(appliedUserCouponId);
+        userCoupon.cancelUse();
+        await this.couponService.updateUserCoupon(userCoupon);
+      }
+
+      // 재고 복원 (확정 차감된 수량을 다시 선점 상태로)
       const orderItems = await this.orderService.getOrderItems(orderId);
       for (const item of orderItems) {
-        await this.productService.confirmPaymentStock(
+        // 재고 복원: 확정 차감된 수량을 다시 선점 상태로 되돌림
+        await this.productService.restoreStockAfterPaymentFailure(
           item.productOptionId,
           item.quantity,
         );
       }
-
-      return {
-        orderId: order.id,
-        status: order.status.value,
-        paidAmount: order.finalAmount,
-        remainingBalance: user.balance,
-        paidAt: order.paidAt!,
-      };
     });
   }
 

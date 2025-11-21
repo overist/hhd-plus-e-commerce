@@ -168,4 +168,21 @@ export class ProductDomainService {
     option.decreaseStock(quantity);
     await this.productOptionRepository.update(option);
   }
+
+  /**
+   * ANCHOR 결제 실패 시 재고 복원 (보상 트랜잭션)
+   * 확정 차감된 재고를 다시 선점 상태로 되돌림
+   */
+  async restoreStockAfterPaymentFailure(
+    productOptionId: number,
+    quantity: number,
+  ): Promise<void> {
+    const option = await this.productOptionRepository.findById(productOptionId);
+    if (!option) {
+      throw new ValidationException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+    }
+
+    option.restoreStock(quantity);
+    await this.productOptionRepository.update(option);
+  }
 }
