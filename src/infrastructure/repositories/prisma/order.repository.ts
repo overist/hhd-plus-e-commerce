@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { IOrderRepository, IOrderItemRepository } from '@domain/interfaces';
+import {
+  IOrderRepository,
+  IOrderItemRepository,
+} from '@domain/interfaces/order.repository.interface';
 import { Order } from '@domain/order/order.entity';
 import { OrderItem } from '@domain/order/order-item.entity';
 import { OrderStatus } from '@domain/order/order-status.vo';

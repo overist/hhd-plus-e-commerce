@@ -1,7 +1,7 @@
 // CART FACADE
 
-import { Coupon, CouponDomainService, UserCoupon } from '@domain/coupon';
-import { Product, ProductDomainService, ProductOption } from '@domain/product';
+import { Coupon } from '@domain/coupon/coupon.entity';
+import { CouponDomainService } from '@domain/coupon/coupon.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@infrastructure/prisma/prisma.service';
 

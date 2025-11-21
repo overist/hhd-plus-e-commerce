@@ -1,9 +1,12 @@
 import { OrderDomainService } from '@domain/order/order.service';
-import { IOrderRepository, IOrderItemRepository } from '@domain/interfaces';
+import {
+  IOrderRepository,
+  IOrderItemRepository,
+} from '@domain/interfaces/order.repository.interface';
 import { Order } from '@domain/order/order.entity';
 import { OrderItem } from '@domain/order/order-item.entity';
 import { OrderStatus } from '@domain/order/order-status.vo';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 
 describe('OrderDomainService', () => {

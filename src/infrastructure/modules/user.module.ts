@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
 import { UserFacade } from '@application/facades/user.facade';
-import { UserDomainService } from '@domain/user';
+import { UserDomainService } from '@domain/user/user.service';
 import {
   IUserRepository,
   IUserBalanceChangeLogRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/user.repository.interface';
 import {
   UserRepository,
   UserBalanceChangeLogRepository,
-} from '@infrastructure/repositories/prisma';
-import { UserController } from '@presentation/user';
+} from '@infrastructure/repositories/prisma/user.repository';
+import { UserController } from '@presentation/user/user.controller';
 
 /**
  * User Module

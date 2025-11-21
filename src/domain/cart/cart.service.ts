@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { ICartRepository } from '@domain/interfaces/cart.repository.interface';
 import {
-  ICartRepository,
   IProductOptionRepository,
   IProductRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/product.repository.interface';
 import { CartItem } from './cart-item.entity';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 
 /**

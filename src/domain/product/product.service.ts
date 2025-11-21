@@ -3,13 +3,13 @@ import {
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
   IProductRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/product.repository.interface';
 import { Product } from './product.entity';
 import { ProductOption } from './product-option.entity';
 import { ProductPopularitySnapshot } from './product-popularity-snapshot.entity';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
-import { OrderItemData } from '@domain/order';
+import { OrderItemData } from '@domain/order/order.types';
 
 /**
  * ProductDomainService

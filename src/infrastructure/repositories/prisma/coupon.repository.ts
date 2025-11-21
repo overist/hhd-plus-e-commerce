@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ICouponRepository, IUserCouponRepository } from '@domain/interfaces';
+import {
+  ICouponRepository,
+  IUserCouponRepository,
+} from '@domain/interfaces/coupon.repository.interface';
 import { Coupon } from '@domain/coupon/coupon.entity';
 import { UserCoupon } from '@domain/coupon/user-coupon.entity';
 import { Prisma } from '@prisma/client';

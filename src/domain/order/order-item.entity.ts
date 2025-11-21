@@ -1,5 +1,5 @@
 import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 
 /**
  * OrderItem Entity

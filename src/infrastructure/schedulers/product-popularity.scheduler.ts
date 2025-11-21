@@ -1,14 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
-  IOrderItemRepository,
   IProductRepository,
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
+} from '@domain/interfaces/product.repository.interface';
+import {
+  IOrderItemRepository,
   IOrderRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/order.repository.interface';
 import { ProductPopularitySnapshot } from '@domain/product/product-popularity-snapshot.entity';
-import { OrderStatus } from '@domain/order';
 
 /**
  * Product Popularity Scheduler

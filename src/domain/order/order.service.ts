@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { IOrderItemRepository, IOrderRepository } from '@domain/interfaces';
+import {
+  IOrderItemRepository,
+  IOrderRepository,
+} from '@domain/interfaces/order.repository.interface';
 import { Order } from './order.entity';
 import { OrderItem } from './order-item.entity';
 import { OrderStatus } from './order-status.vo';
 import { OrderItemData } from './order.types';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 
 /**

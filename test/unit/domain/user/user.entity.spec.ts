@@ -1,7 +1,7 @@
 import { User } from '@domain/user/user.entity';
 import { BalanceChangeCode } from '@domain/user/user-balance-change-log.entity';
 import { ErrorCode } from '@domain/common/constants/error-code';
-import { DomainException } from '@domain/common/exceptions';
+import { DomainException } from '@domain/common/exceptions/domain.exception';
 
 describe('User Entity', () => {
   describe('생성자', () => {

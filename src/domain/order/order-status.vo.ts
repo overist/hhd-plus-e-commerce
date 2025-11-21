@@ -1,4 +1,4 @@
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 
 /**
  * OrderStatus Value Object

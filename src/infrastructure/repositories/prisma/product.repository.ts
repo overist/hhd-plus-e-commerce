@@ -3,7 +3,7 @@ import {
   IProductRepository,
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/product.repository.interface';
 import { Product } from '@domain/product/product.entity';
 import { ProductOption } from '@domain/product/product-option.entity';
 import { ProductPopularitySnapshot } from '@domain/product/product-popularity-snapshot.entity';

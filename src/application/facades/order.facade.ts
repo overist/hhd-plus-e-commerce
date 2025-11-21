@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { OrderDomainService, OrderItem } from '@domain/order';
-import { CouponDomainService } from '@domain/coupon';
-import { UserDomainService } from '@domain/user';
-import { ProductDomainService } from '@domain/product';
-import { ValidationException } from '@domain/common/exceptions';
+import { OrderDomainService } from '@domain/order/order.service';
+import { OrderItem } from '@domain/order/order-item.entity';
+import { CouponDomainService } from '@domain/coupon/coupon.service';
+import { UserDomainService } from '@domain/user/user.service';
+import { ProductDomainService } from '@domain/product/product.service';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 import { PrismaService } from '@infrastructure/prisma/prisma.service';
 

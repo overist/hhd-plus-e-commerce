@@ -13,12 +13,16 @@ import { OrderFacade } from '@application/facades/order.facade';
 import {
   CreateOrderRequestDto,
   CreateOrderResponseDto,
+} from './dto/create-order.dto';
+import {
   ProcessPaymentRequestDto,
   ProcessPaymentResponseDto,
+} from './dto/process-payment.dto';
+import {
   GetOrdersResponseDto,
   GetOrderDetailResponseDto,
-} from './dto';
-import { OrderDomainService } from '@domain/order';
+} from './dto/get-orders.dto';
+import { OrderDomainService } from '@domain/order/order.service';
 
 /**
  * Order Controller

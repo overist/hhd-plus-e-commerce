@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ProductFacade } from '@application/facades/product.facade';
-import { ProductDomainService } from '@domain/product';
+import { ProductDomainService } from '@domain/product/product.service';
 import {
   IProductRepository,
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/product.repository.interface';
 import {
   ProductRepository,
   ProductOptionRepository,
   ProductPopularitySnapshotRepository,
-} from '@infrastructure/repositories/prisma';
-import { ProductController } from '@presentation/product';
+} from '@infrastructure/repositories/prisma/product.repository';
+import { ProductController } from '@presentation/product/product.controller';
 
 /**
  * Product Module

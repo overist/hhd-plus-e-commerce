@@ -9,14 +9,16 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { UserFacade } from '@application/facades/user.facade';
+import { GetBalanceResponseDto } from './dto/get-balance.dto';
 import {
-  GetBalanceResponseDto,
   GetBalanceLogsQueryDto,
   GetBalanceLogsResponseDto,
+} from './dto/get-balance-logs.dto';
+import {
   ChargeBalanceRequestDto,
   ChargeBalanceResponseDto,
-} from './dto';
-import { UserDomainService } from '@domain/user';
+} from './dto/charge-balance.dto';
+import { UserDomainService } from '@domain/user/user.service';
 
 /**
  * User Controller

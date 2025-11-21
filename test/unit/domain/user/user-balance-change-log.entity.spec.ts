@@ -3,7 +3,7 @@ import {
   BalanceChangeCode,
 } from '@domain/user/user-balance-change-log.entity';
 import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 
 describe('UserBalanceChangeLog Entity', () => {
   describe('생성자', () => {

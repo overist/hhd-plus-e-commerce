@@ -1,5 +1,5 @@
 import { OrderStatus } from '@domain/order/order-status.vo';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 
 describe('OrderStatus', () => {
   describe('from', () => {

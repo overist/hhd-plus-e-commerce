@@ -8,12 +8,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ProductFacade } from '@application/facades/product.facade';
-import {
-  GetProductsResponseDto,
-  GetProductDetailResponseDto,
-  GetTopProductsResponseDto,
-} from './dto';
-import { ProductDomainService } from '@domain/product';
+import { GetProductsResponseDto } from './dto/get-products.dto';
+import { GetProductDetailResponseDto } from './dto/get-product-detail.dto';
+import { GetTopProductsResponseDto } from './dto/get-top-products.dto';
+import { ProductDomainService } from '@domain/product/product.service';
 
 /**
  * Product Controller

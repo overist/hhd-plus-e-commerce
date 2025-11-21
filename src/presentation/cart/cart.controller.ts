@@ -11,9 +11,10 @@ import {
   Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { AddCartRequestDto, GetCartResponseDto } from './dto';
-import { CartDomainService } from '@domain/cart';
-import { CartFacade } from '@application/index';
+import { AddCartRequestDto } from './dto/add-cart.dto';
+import { GetCartResponseDto } from './dto/get-cart.dto';
+import { CartDomainService } from '@domain/cart/cart.service';
+import { CartFacade } from '@application/facades/cart.facade';
 
 /**
  * Cart Controller

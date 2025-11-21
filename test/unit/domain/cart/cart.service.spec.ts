@@ -1,12 +1,12 @@
 import { CartDomainService } from '@domain/cart/cart.service';
 import { CartItem } from '@domain/cart/cart-item.entity';
+import { ICartRepository } from '@domain/interfaces/cart.repository.interface';
 import {
-  ICartRepository,
   IProductRepository,
   IProductOptionRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/product.repository.interface';
 import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions';
+import { ValidationException } from '@domain/common/exceptions/domain.exception';
 
 describe('CartDomainService', () => {
   let cartDomainService: CartDomainService;

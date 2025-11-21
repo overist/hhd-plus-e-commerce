@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import {
   IUserBalanceChangeLogRepository,
   IUserRepository,
-} from '@domain/interfaces';
+} from '@domain/interfaces/user.repository.interface';
 import {
   DomainException,
   ValidationException,
-} from '@domain/common/exceptions';
+} from '@domain/common/exceptions/domain.exception';
 import { ErrorCode } from '@domain/common/constants/error-code';
 import { User } from './user.entity';
 import {
