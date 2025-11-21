@@ -10,7 +10,7 @@ import { PrismaService } from '@infrastructure/prisma/prisma.service';
 
 /**
  * User Repository Implementation (Prisma)
- * 동시성 제어: 트랜잭션 컨텍스트에서 FOR UPDATE를 통한 비관적 잠금
+ * 동시성 제어: 낙관적 잠금(Optimistic Locking) 사용
  */
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -25,17 +25,7 @@ export class UserRepository implements IUserRepository {
 
   // ANCHOR user.findById
   async findById(id: number): Promise<User | null> {
-    const tx = this.prisma.getTransactionClient();
-
-    // 트랜잭션 컨텍스트가 있으면 FOR UPDATE 사용
-    if (tx) {
-      const recordList: any[] =
-        await tx.$queryRaw`SELECT * FROM users WHERE id = ${id} FOR UPDATE`;
-      const record = recordList.length > 0 ? recordList[0] : null;
-      return record ? this.mapToDomain(record) : null;
-    }
-
-    // 트랜잭션 컨텍스트가 없으면 일반 조회
+    // 낙관적 잠금 사용
     const record = await this.prismaClient.users.findUnique({ where: { id } });
     return record ? this.mapToDomain(record) : null;
   }
@@ -45,6 +35,7 @@ export class UserRepository implements IUserRepository {
     const created = await this.prismaClient.users.create({
       data: {
         balance: user.balance,
+        version: 1,
         created_at: user.createdAt,
         updated_at: user.updatedAt,
       },
@@ -54,14 +45,28 @@ export class UserRepository implements IUserRepository {
 
   // ANCHOR user.update
   async update(user: User): Promise<User> {
-    const updated = await this.prismaClient.users.update({
-      where: { id: user.id },
+    // 낙관적 잠금: version을 조건으로 추가하여 동시성 충돌 감지
+    const updated = await this.prismaClient.users.updateMany({
+      where: {
+        id: user.id,
+        version: user.version, // 현재 version으로 조건 검사
+      },
       data: {
         balance: user.balance,
+        version: user.version + 1, // version 증가
         updated_at: user.updatedAt,
       },
     });
-    return this.mapToDomain(updated);
+
+    if (updated.count === 0) {
+      throw new Error('Optimistic lock error: User update failed by version');
+    }
+
+    // 업데이트된 레코드 재조회
+    const refreshed = await this.prismaClient.users.findUnique({
+      where: { id: user.id },
+    });
+    return this.mapToDomain(refreshed);
   }
 
   /**
@@ -73,7 +78,13 @@ export class UserRepository implements IUserRepository {
       typeof maybeDecimal?.toNumber === 'function'
         ? maybeDecimal.toNumber()
         : Number(record.balance);
-    return new User(record.id, balance, record.created_at, record.updated_at);
+    return new User(
+      record.id,
+      balance,
+      record.created_at,
+      record.updated_at,
+      record.version,
+    );
   }
 }
 

@@ -17,6 +17,7 @@ export class User {
     public balance: number,
     public readonly createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
+    public version: number = 1, // 낙관적 잠금 (기본값: 1)
   ) {
     this.validateBalance();
   }
