@@ -1,5 +1,9 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import session from 'express-session';
+import { createClient } from 'redis';
+import { RedisStore } from 'connect-redis';
 import { AppModule } from './app.module';
 import {
   DomainExceptionFilter,
@@ -24,7 +28,20 @@ async function bootstrap() {
     }),
   );
 
-  // SECTION Swagger Setup
+  // Redis Session Store
+  const redisClient = createClient({ url: process.env.REDIS_URL as string });
+  await redisClient.connect().catch((err) => {
+    console.error('Redis connection error:', err);
+  });
+  app.use(
+    session({
+      store: new RedisStore({ client: redisClient }),
+      secret: process.env.SESSION_SECRET as string,
+      cookie: { maxAge: 12 * 60 * 60 * 1000 },
+    }),
+  );
+
+  // Swagger Setup
   if (process.env.NODE_ENV !== 'production') {
     const swagger = await import('@nestjs/swagger');
     const DocumentBuilder = swagger.DocumentBuilder;
@@ -38,8 +55,8 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api', app, document);
   }
-  // !SECTION Swagger Setup
 
+  // Start Application
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
