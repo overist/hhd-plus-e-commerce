@@ -17,8 +17,8 @@ export class UserCoupon {
     public orderId: number | null,
     public readonly createdAt: Date,
     public usedAt: Date | null,
-    public readonly expiredAt: Date,
-    public updatedAt: Date,
+    public readonly expiredAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {}
 
   /**
@@ -110,5 +110,19 @@ export class UserCoupon {
       return 'EXPIRED';
     }
     return 'AVAILABLE';
+  }
+
+  /**
+   * 쿠폰 사용 취소 (보상 트랜잭션용)
+   * 결제 실패 시 쿠폰 사용을 되돌림
+   */
+  cancelUse(): void {
+    if (!this.isUsed()) {
+      throw new DomainException(ErrorCode.INVALID_COUPON);
+    }
+
+    this.orderId = null;
+    this.usedAt = null;
+    this.updatedAt = new Date();
   }
 }

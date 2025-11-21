@@ -16,8 +16,8 @@ export class Coupon {
     public totalQuantity: number,
     public issuedQuantity: number,
     public readonly expiredAt: Date,
-    public readonly createdAt: Date,
-    public updatedAt: Date,
+    public readonly createdAt: Date = new Date(),
+    public updatedAt: Date = new Date(),
   ) {
     this.validateDiscountRate();
     this.validateQuantity();

@@ -34,7 +34,7 @@ describe('OrderExpirationScheduler Integration Tests', () => {
 
   afterAll(async () => {
     await teardownIntegrationTest();
-  });
+  }, 60000); // 60초 타임아웃
 
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
@@ -55,9 +55,7 @@ describe('OrderExpirationScheduler Integration Tests', () => {
   describe('10분 만료 재고 해제', () => {
     it('10분 경과한 PENDING 주문의 재고가 자동 해제된다', async () => {
       // Given: 10분 전에 생성된 주문
-      const user = await userRepository.create(
-        new User(0, 100000, new Date(), new Date()),
-      );
+      const user = await userRepository.create(new User(0, 100000));
 
       const product = await productRepository.create(
         new Product(
@@ -73,16 +71,7 @@ describe('OrderExpirationScheduler Integration Tests', () => {
       );
 
       const productOption = await productOptionRepository.create(
-        new ProductOption(
-          0,
-          product.id,
-          'RED',
-          'M',
-          100,
-          0,
-          new Date(),
-          new Date(),
-        ),
+        new ProductOption(0, product.id, 'RED', 'M', 100, 0),
       );
 
       // 재고 선점

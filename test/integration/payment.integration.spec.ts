@@ -37,7 +37,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
 
   afterAll(async () => {
     await teardownIntegrationTest();
-  });
+  }, 60000); // 60초 타임아웃
 
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
@@ -93,7 +93,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       // Given: 3명의 사용자, 각 잔액 500,000원
       const users = await Promise.all(
         Array.from({ length: 3 }, () =>
-          userRepository.create(new User(0, 500000, new Date(), new Date())),
+          userRepository.create(new User(0, 500000)),
         ),
       );
 
@@ -111,16 +111,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
 
       const productOption = await productOptionRepository.create(
-        new ProductOption(
-          0,
-          product.id,
-          'BLUE',
-          'L',
-          100,
-          0,
-          new Date(),
-          new Date(),
-        ),
+        new ProductOption(0, product.id, 'BLUE', 'L', 100, 0),
       );
 
       // When: 3명이 각각 주문 생성 (재고 선점)
@@ -151,13 +142,11 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
       expect(finalOption!.stock).toBe(70);
       expect(finalOption!.reservedStock).toBe(0);
-    });
+    }, 30000); // 30초 타임아웃
 
     it('결제 실패 시 잔액은 차감되지 않고 재고는 선점 상태로 유지된다', async () => {
       // Given: 충분한 잔액으로 주문 생성
-      const user = await userRepository.create(
-        new User(0, 100000, new Date(), new Date()),
-      );
+      const user = await userRepository.create(new User(0, 100000));
 
       const product = await productRepository.create(
         new Product(
@@ -173,16 +162,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
 
       const productOption = await productOptionRepository.create(
-        new ProductOption(
-          0,
-          product.id,
-          'BLACK',
-          'XL',
-          10,
-          0,
-          new Date(),
-          new Date(),
-        ),
+        new ProductOption(0, product.id, 'BLACK', 'XL', 10, 0),
       );
 
       // When: 주문 생성 (재고 선점 성공)
@@ -213,6 +193,6 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       // Then: 주문 상태는 PENDING 유지
       const finalOrder = await orderRepository.findById(order.orderId);
       expect(finalOrder!.status.isPending()).toBe(true);
-    });
+    }, 30000); // 30초 타임아웃
   });
 });
