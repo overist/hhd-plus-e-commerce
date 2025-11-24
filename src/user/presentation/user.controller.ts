@@ -6,6 +6,7 @@ import {
   Query,
   Body,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { UserFacade } from '@/user/application/user.facade';
@@ -19,6 +20,8 @@ import {
   ChargeBalanceResponseDto,
 } from './dto/charge-balance.dto';
 import { UserDomainService } from '@/user/domain/services/user.service';
+import { AdminGuard } from '@common/guards/admin.guard';
+import { AuthGuard } from '@common/guards/auth.guard';
 
 /**
  * User Controller
@@ -37,6 +40,7 @@ export class UserController {
    * GET /api/users/:userId/balance
    */
   @Get(':userId/balance')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '잔액 조회',
     description: '사용자의 현재 잔액을 조회합니다.',
@@ -61,6 +65,7 @@ export class UserController {
    * PATCH /api/users/:userId/balance
    */
   @Patch(':userId/balance')
+  @UseGuards(AdminGuard)
   @ApiOperation({
     summary: '잔액 충전',
     description: '사용자의 잔액을 충전합니다.',
@@ -86,6 +91,7 @@ export class UserController {
    * GET /api/users/:userId/balance/logs
    */
   @Get(':userId/balance/logs')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '잔액 변경 이력 조회',
     description: '사용자의 잔액 변경 이력을 조회합니다.',

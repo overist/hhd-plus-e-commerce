@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { CouponFacade } from '@/coupon/application/coupon.facade';
@@ -16,6 +17,7 @@ import {
   IssueCouponResponseDto,
 } from './dto/issue-coupon.dto';
 import { GetUserCouponsResponseDto } from './dto/get-user-coupons.dto';
+import { AuthGuard } from '@common/guards/auth.guard';
 
 /**
  * Coupon Controller
@@ -30,6 +32,7 @@ export class CouponController {
    * 쿠폰 발급 (US-013)
    */
   @Post('coupons/:couponId/issue')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '쿠폰 발급',
@@ -54,6 +57,7 @@ export class CouponController {
    * 보유 쿠폰 조회 (US-014)
    */
   @Get('users/:userId/coupons')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '보유 쿠폰 조회',
     description: '사용자가 보유한 쿠폰 목록을 조회합니다.',

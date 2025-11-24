@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { OrderFacade } from '@/order/application/order.facade';
@@ -23,6 +24,7 @@ import {
   GetOrderDetailResponseDto,
 } from './dto/get-orders.dto';
 import { OrderDomainService } from '@/order/domain/services/order.service';
+import { AuthGuard } from '@common/guards/auth.guard';
 
 /**
  * Order Controller
@@ -40,6 +42,7 @@ export class OrderController {
    * 주문서 생성 (US-008)
    */
   @Post('orders')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '주문서 생성',
@@ -66,6 +69,7 @@ export class OrderController {
    * 결제 처리 (US-009)
    */
   @Post('orders/:orderId/payment')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '결제 처리',
@@ -96,6 +100,7 @@ export class OrderController {
    * 주문 내역 조회 (US-012)
    */
   @Get('users/:userId/orders')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '주문 내역 조회',
     description: '사용자의 주문 내역을 조회합니다.',
@@ -118,6 +123,7 @@ export class OrderController {
    * 주문 상세 조회
    */
   @Get('orders/:orderId')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '주문 상세 조회',
     description: '특정 주문의 상세 정보를 조회합니다.',

@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ProductFacade } from '@/product/application/product.facade';
@@ -12,6 +13,7 @@ import { GetProductsResponseDto } from './dto/get-products.dto';
 import { GetProductDetailResponseDto } from './dto/get-product-detail.dto';
 import { GetTopProductsResponseDto } from './dto/get-top-products.dto';
 import { ProductDomainService } from '@/product/domain/services/product.service';
+import { AdminGuard } from '@common/guards/admin.guard';
 
 /**
  * Product Controller
@@ -115,6 +117,7 @@ export class ProductController {
    * 상품 옵션의 재고 수량을 관리자 권한으로 수정
    */
   @Patch('options/:optionId/stock')
+  @UseGuards(AdminGuard)
   @ApiOperation({
     summary: '상품 옵션 재고 수량 수정',
     description: '상품 옵션의 재고 수량을 관리자 권한으로 수정합니다.',

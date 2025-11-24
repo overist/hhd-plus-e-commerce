@@ -8,13 +8,14 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-  Patch,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AddCartRequestDto } from './dto/add-cart.dto';
 import { GetCartResponseDto } from './dto/get-cart.dto';
 import { CartDomainService } from '@/cart/domain/services/cart.service';
 import { CartFacade } from '@/cart/application/cart.facade';
+import { AuthGuard } from '@common/guards/auth.guard';
 
 /**
  * Cart Controller
@@ -32,6 +33,7 @@ export class CartController {
    * ANCHOR 장바구니 상품 추가 (US-005)
    */
   @Post()
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '장바구니 상품 추가',
@@ -55,6 +57,7 @@ export class CartController {
    * ANCHOR 장바구니 조회 (US-006)
    */
   @Get()
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '장바구니 조회',
     description: '장바구니에 담긴 상품 목록을 조회합니다.',
@@ -77,6 +80,7 @@ export class CartController {
    * ANCHOR 장바구니 상품 삭제 (US-007)
    */
   @Delete(':productOptionId')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: '장바구니 상품 삭제',
