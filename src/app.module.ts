@@ -1,12 +1,18 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './infrastructure/modules/auth.module';
-import { ProductModule } from './infrastructure/modules/product.module';
-import { UserModule } from './infrastructure/modules/user.module';
-import { CartModule } from './infrastructure/modules/cart.module';
-import { OrderModule } from './infrastructure/modules/order.module';
-import { CouponModule } from './infrastructure/modules/coupon.module';
-import { SchedulerModule } from './infrastructure/modules/scheduler.module';
-import { GlobalPrismaModule } from '@infrastructure/prisma/prisma.module';
+
+// GLOBAL MODULES
+import { GlobalPrismaModule } from './@common/prisma-manager/prisma.module';
+
+// AUTH MODULE
+import { AuthModule } from './@auth/auth.module';
+
+// APP MODULES
+import { ProductModule } from './product/product.module';
+import { UserModule } from './user/user.module';
+import { CartModule } from './cart/cart.module';
+import { OrderModule } from './order/order.module';
+import { CouponModule } from './coupon/coupon.module';
+import { SchedulerModule } from './@schedulers/scheduler.module';
 
 @Module({
   imports: [

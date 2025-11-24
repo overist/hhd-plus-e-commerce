@@ -1,9 +1,8 @@
 import {
   UserBalanceChangeLog,
   BalanceChangeCode,
-} from '@domain/user/user-balance-change-log.entity';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
+} from '@/user/domain/entities/user-balance-change-log.entity';
+import { ErrorCode, ValidationException } from '@common/exception';
 
 describe('UserBalanceChangeLog Entity', () => {
   describe('생성자', () => {

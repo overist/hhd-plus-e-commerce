@@ -1,7 +1,7 @@
 import { MySqlContainer, StartedMySqlContainer } from '@testcontainers/mysql';
 import { execSync } from 'child_process';
 import * as path from 'path';
-import { PrismaService } from '@infrastructure/prisma/prisma.service';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 
 let mysqlContainer: StartedMySqlContainer;
 let prismaService: PrismaService;

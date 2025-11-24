@@ -1,12 +1,11 @@
-import { CouponDomainService } from '@domain/coupon/coupon.service';
-import { Coupon } from '@domain/coupon/coupon.entity';
-import { UserCoupon } from '@domain/coupon/user-coupon.entity';
+import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
+import { Coupon } from '@/coupon/domain/entities/coupon.entity';
+import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
 import {
   ICouponRepository,
   IUserCouponRepository,
-} from '@domain/interfaces/coupon.repository.interface';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { DomainException } from '@domain/common/exceptions/domain.exception';
+} from '@/coupon/domain/interfaces/coupon.repository.interface';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('CouponDomainService', () => {
   let couponDomainService: CouponDomainService;

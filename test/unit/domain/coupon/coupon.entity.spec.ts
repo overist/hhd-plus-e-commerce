@@ -1,9 +1,9 @@
-import { Coupon } from '@domain/coupon/coupon.entity';
-import { ErrorCode } from '@domain/common/constants/error-code';
+import { Coupon } from '@/coupon/domain/entities/coupon.entity';
 import {
+  ErrorCode,
   DomainException,
   ValidationException,
-} from '@domain/common/exceptions/domain.exception';
+} from '@common/exception';
 
 describe('Coupon Entity', () => {
   describe('생성자', () => {

@@ -1,9 +1,9 @@
-import { CartItem } from '@domain/cart/cart-item.entity';
-import { ErrorCode } from '@domain/common/constants/error-code';
+import { CartItem } from '@/cart/domain/entities/cart-item.entity';
 import {
+  ErrorCode,
   DomainException,
   ValidationException,
-} from '@domain/common/exceptions/domain.exception';
+} from '@common/exception';
 
 describe('CartItem Entity', () => {
   describe('생성자', () => {

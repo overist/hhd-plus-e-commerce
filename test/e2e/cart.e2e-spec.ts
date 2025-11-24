@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DomainExceptionFilter } from '@presentation/common/filters/domain-exception.filter';
-import { ValidationExceptionFilter } from '@presentation/common/filters/validation-exception.filter';
+import { DomainExceptionFilter } from '@common/exception/domain-exception.filter';
+import { ValidationExceptionFilter } from '@common/exception/validation-exception.filter';
 
 describe('CartController (E2E)', () => {
   let app: INestApplication;

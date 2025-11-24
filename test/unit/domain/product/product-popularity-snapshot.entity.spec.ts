@@ -1,4 +1,4 @@
-import { ProductPopularitySnapshot } from '@domain/product/product-popularity-snapshot.entity';
+import { ProductPopularitySnapshot } from '@/product/domain/entities/product-popularity-snapshot.entity';
 
 describe('ProductPopularitySnapshot Entity', () => {
   describe('생성자', () => {

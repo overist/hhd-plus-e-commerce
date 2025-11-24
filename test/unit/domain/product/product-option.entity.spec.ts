@@ -1,6 +1,9 @@
-import { ProductOption } from '@domain/product/product-option.entity';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
+import { ProductOption } from '@/product/domain/entities/product-option.entity';
+import {
+  ErrorCode,
+  DomainException,
+  ValidationException,
+} from '@common/exception';
 
 describe('ProductOption Entity', () => {
   describe('생성자', () => {

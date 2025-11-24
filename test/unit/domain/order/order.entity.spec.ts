@@ -1,10 +1,10 @@
-import { Order } from '@domain/order/order.entity';
-import { OrderStatus } from '@domain/order/order-status.vo';
-import { ErrorCode } from '@domain/common/constants/error-code';
+import { Order } from '@/order/domain/entities/order.entity';
+import { OrderStatus } from '@/order/domain/entities/order-status.vo';
 import {
+  ErrorCode,
   DomainException,
   ValidationException,
-} from '@domain/common/exceptions/domain.exception';
+} from '@common/exception';
 
 describe('Order Entity', () => {
   describe('생성자', () => {

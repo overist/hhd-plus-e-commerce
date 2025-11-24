@@ -1,18 +1,18 @@
-import { UserDomainService } from '@domain/user/user.service';
-import { User } from '@domain/user/user.entity';
+import { UserDomainService } from '@/user/domain/services/user.service';
+import { User } from '@/user/domain/entities/user.entity';
 import {
   UserBalanceChangeLog,
   BalanceChangeCode,
-} from '@domain/user/user-balance-change-log.entity';
+} from '@/user/domain/entities/user-balance-change-log.entity';
 import {
   IUserRepository,
   IUserBalanceChangeLogRepository,
-} from '@domain/interfaces/user.repository.interface';
-import { ErrorCode } from '@domain/common/constants/error-code';
+} from '@/user/domain/interfaces/user.repository.interface';
 import {
+  ErrorCode,
   DomainException,
   ValidationException,
-} from '@domain/common/exceptions/domain.exception';
+} from '@common/exception';
 
 describe('UserDomainService', () => {
   let userDomainService: UserDomainService;

@@ -1,13 +1,12 @@
-import { OrderDomainService } from '@domain/order/order.service';
+import { OrderDomainService } from '@/order/domain/services/order.service';
 import {
   IOrderRepository,
   IOrderItemRepository,
-} from '@domain/interfaces/order.repository.interface';
-import { Order } from '@domain/order/order.entity';
-import { OrderItem } from '@domain/order/order-item.entity';
-import { OrderStatus } from '@domain/order/order-status.vo';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
-import { ErrorCode } from '@domain/common/constants/error-code';
+} from '@/order/domain/interfaces/order.repository.interface';
+import { Order } from '@/order/domain/entities/order.entity';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
+import { OrderStatus } from '@/order/domain/entities/order-status.vo';
+import { ErrorCode } from '@common/exception';
 
 describe('OrderDomainService', () => {
   let service: OrderDomainService;

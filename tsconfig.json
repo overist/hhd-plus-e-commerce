@@ -15,11 +15,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@domain/*": ["src/domain/*"],
-      "@application/*": ["src/application/*"],
-      "@infrastructure/*": ["src/infrastructure/*"],
-      "@presentation/*": ["src/presentation/*"],
-      "@common/*": ["src/common/*"]
+      "@/*": ["src/*"],
+      "@common/*": ["src/@common/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

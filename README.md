@@ -161,9 +161,9 @@ async update(user: User): Promise<User> {
 **재시도 로직:**
 
 ```typescript
-// 도메인 서비스에서 재시도 처리 (최대 10회)
+// 도메인 서비스에서 재시도 처리
 async chargeUser(userId: number, amount: number): Promise<User> {
-  const maxRetries = 10;
+  const maxRetries = 3;
   let attempt = 0;
 
   while (attempt < maxRetries) {

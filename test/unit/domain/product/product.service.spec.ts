@@ -1,14 +1,13 @@
-import { ProductDomainService } from '@domain/product/product.service';
-import { Product } from '@domain/product/product.entity';
-import { ProductOption } from '@domain/product/product-option.entity';
-import { ProductPopularitySnapshot } from '@domain/product/product-popularity-snapshot.entity';
+import { ProductDomainService } from '@/product/domain/services/product.service';
+import { Product } from '@/product/domain/entities/product.entity';
+import { ProductOption } from '@/product/domain/entities/product-option.entity';
+import { ProductPopularitySnapshot } from '@/product/domain/entities/product-popularity-snapshot.entity';
 import {
   IProductRepository,
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
-} from '@domain/interfaces/product.repository.interface';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
+} from '@/product/domain/interfaces/product.repository.interface';
+import { ErrorCode, ValidationException } from '@common/exception';
 
 describe('ProductDomainService', () => {
   let productDomainService: ProductDomainService;
