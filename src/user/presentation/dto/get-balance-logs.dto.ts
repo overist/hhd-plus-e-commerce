@@ -1,3 +1,4 @@
+import { GetBalanceLogsQuery } from '@/user/application/dto/get-balance-logs.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsOptional, IsString, IsNumber, IsDateString } from 'class-validator';
@@ -5,7 +6,7 @@ import { IsOptional, IsString, IsNumber, IsDateString } from 'class-validator';
 /**
  * 잔액 변경 이력 조회 요청 DTO
  */
-export class GetBalanceLogsQueryDto {
+export class GetBalanceLogsRequest {
   @ApiPropertyOptional({ description: '조회 시작 시각 (ISO8601)' })
   @IsOptional()
   @IsDateString()
@@ -17,7 +18,7 @@ export class GetBalanceLogsQueryDto {
   to?: string;
 
   @ApiPropertyOptional({
-    description: '변경 유형 코드 (CHARGE, PAYMENT, REFUND, ADJUST)',
+    description: '변경 유형 코드 (SYSTEM_CHARGE, PAYMENT, ADJUST)',
   })
   @IsOptional()
   @IsString()
@@ -40,12 +41,27 @@ export class GetBalanceLogsQueryDto {
   @Type(() => Number)
   @IsNumber()
   size?: number;
+
+  static toQuery(
+    userId: number,
+    dto: GetBalanceLogsRequest,
+  ): GetBalanceLogsQuery {
+    const query = new GetBalanceLogsQuery();
+    query.userId = userId;
+    query.from = dto.from;
+    query.to = dto.to;
+    query.code = dto.code;
+    query.refId = dto.refId;
+    query.page = dto.page;
+    query.size = dto.size;
+    return query;
+  }
 }
 
 /**
  * 잔액 변경 이력 항목 DTO
  */
-export class BalanceLogDto {
+export class BalanceLogItemResponse {
   @ApiProperty({ description: '로그 ID' })
   id: number;
 
@@ -77,9 +93,12 @@ export class BalanceLogDto {
 /**
  * 잔액 변경 이력 조회 응답 DTO
  */
-export class GetBalanceLogsResponseDto {
-  @ApiProperty({ description: '잔액 변경 이력 목록', type: [BalanceLogDto] })
-  logs: BalanceLogDto[];
+export class GetBalanceLogsResponse {
+  @ApiProperty({
+    description: '잔액 변경 이력 목록',
+    type: [BalanceLogItemResponse],
+  })
+  logs: BalanceLogItemResponse[];
 
   @ApiProperty({ description: '현재 페이지' })
   page: number;

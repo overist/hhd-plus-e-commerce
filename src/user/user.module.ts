@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { UserFacade } from '@/user/application/user.facade';
+import { GetBalanceUseCase } from '@/user/application/get-balance.use-case';
+import { GetBalanceLogsUseCase } from '@/user/application/get-balance-logs.use-case';
+import { ChargeBalanceUseCase } from '@/user/application/charge-balance.use-case';
 import { UserDomainService } from '@/user/domain/services/user.service';
 import {
   IUserRepository,
@@ -33,8 +35,10 @@ import { UserController } from '@/user/presentation/user.controller';
     // Domain Service
     UserDomainService,
 
-    // Facade
-    UserFacade,
+    // UseCases
+    GetBalanceUseCase,
+    GetBalanceLogsUseCase,
+    ChargeBalanceUseCase,
   ],
   exports: [
     UserDomainService,

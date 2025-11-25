@@ -186,7 +186,7 @@ export class OrderFacade {
       });
 
       // 2단계: 트랜잭션 외부 - 사용자 잔액 차감 (낙관적 잠금)
-      const user = await this.userService.deductUser(
+      const user = await this.userService.deductBalance(
         userId,
         paymentAmount,
         orderId,

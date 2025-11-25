@@ -3,19 +3,15 @@ import {
   IUserBalanceChangeLogRepository,
   IUserRepository,
 } from '@/user/domain/interfaces/user.repository.interface';
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 import { User } from '../entities/user.entity';
-import {
-  BalanceChangeCode,
-  UserBalanceChangeLog,
-} from '../entities/user-balance-change-log.entity';
+import { UserBalanceChangeLog } from '../entities/user-balance-change-log.entity';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 
-// previous duplicate import removed
-export interface GetBalanceLogsDto {
+/**
+ * 잔액 변경 이력 조회 결과
+ */
+export interface BalanceLogsData {
   logs: UserBalanceChangeLog[];
   page: number;
   size: number;
@@ -24,35 +20,20 @@ export interface GetBalanceLogsDto {
 
 /**
  * UserDomainService
- * 사용자 잔액 관련 핵심 규칙 담당.
+ * 사용자 잔액 관련 핵심 비즈니스 로직을 담당한다.
  */
 @Injectable()
 export class UserDomainService {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly balanceLogRepository: IUserBalanceChangeLogRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
    * ANCHOR 사용자 조회
    */
   async getUser(userId: number): Promise<User> {
-    const user = await this.userRepository.findById(userId);
-    if (!user) {
-      throw new ValidationException(ErrorCode.USER_NOT_FOUND);
-    }
-
-    return user;
-  }
-
-  /**
-   * ANCHOR 사용자 잔액 조회
-   */
-  async getUserBalance(userId: number): Promise<number> {
-    const user = await this.loadUserOrFail(userId);
-    return user.balance;
-  }
-  async loadUserOrFail(userId: number): Promise<User> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new DomainException(ErrorCode.USER_NOT_FOUND);
@@ -62,27 +43,28 @@ export class UserDomainService {
 
   /**
    * ANCHOR 잔액 충전 처리
-   * 낙관적 잠금 재시도 로직
+   * 낙관적 잠금 재시도 로직 포함
    */
-  async chargeUser(
+  async chargeBalance(
     userId: number,
     amount: number,
     refId?: number,
     note?: string,
   ): Promise<User> {
-    // 낙관적 잠금 재시도 로직
     const maxRetries = 3;
     let attempt = 0;
 
     while (attempt < maxRetries) {
       try {
-        const _user = await this.getUser(userId);
-        const { user, log } = _user.charge(amount, refId, note);
+        return await this.prisma.$transaction(async () => {
+          const user = await this.getUser(userId);
+          const { user: updatedUser, log } = user.charge(amount, refId, note);
 
-        await this.userRepository.update(user);
-        await this.balanceLogRepository.create(log);
+          await this.userRepository.update(updatedUser);
+          await this.balanceLogRepository.create(log);
 
-        return user;
+          return updatedUser;
+        });
       } catch (error) {
         attempt++;
         if (attempt >= maxRetries) {
@@ -94,31 +76,33 @@ export class UserDomainService {
       }
     }
 
-    throw new Error('Unexpected error in chargeUser');
+    throw new Error('Unexpected error in chargeBalance');
   }
 
   /**
    * ANCHOR 잔액 차감 처리
+   * 낙관적 잠금 재시도 로직 포함
    */
-  async deductUser(
+  async deductBalance(
     userId: number,
     amount: number,
     refId?: number,
     note?: string,
   ): Promise<User> {
-    // 낙관적 잠금 재시도 로직
     const maxRetries = 3;
     let attempt = 0;
 
     while (attempt < maxRetries) {
       try {
-        const _user = await this.getUser(userId);
-        const { user, log } = _user.deduct(amount, refId, note);
+        return await this.prisma.$transaction(async () => {
+          const user = await this.getUser(userId);
+          const { user: updatedUser, log } = user.deduct(amount, refId, note);
 
-        await this.userRepository.update(user);
-        await this.balanceLogRepository.create(log);
+          await this.userRepository.update(updatedUser);
+          await this.balanceLogRepository.create(log);
 
-        return user;
+          return updatedUser;
+        });
       } catch (error) {
         attempt++;
         if (attempt >= maxRetries) {
@@ -130,51 +114,27 @@ export class UserDomainService {
       }
     }
 
-    throw new Error('Unexpected error in deductUser');
+    throw new Error('Unexpected error in deductBalance');
   }
 
   /**
    * ANCHOR 잔액 변경 이력 조회
-   * RF-022: 시스템은 사용자의 잔액 변경 이력을 조회할 수 있어야 한다
    */
-  async getUserBalanceChangeLogs(userId: number): Promise<GetBalanceLogsDto> {
+  async getBalanceChangeLogs(userId: number): Promise<BalanceLogsData> {
     const logs = await this.balanceLogRepository.findByUserId(userId);
-    return { logs, page: 1, size: logs.length, total: logs.length };
+    return {
+      logs,
+      page: 1,
+      size: logs.length,
+      total: logs.length,
+    };
   }
 
   /**
-   * ANCHOR 사용자 저장
+   * ANCHOR 사용자 생성
    */
   async createUser(): Promise<User> {
     const user = new User(0, 0);
     return this.userRepository.create(user);
-  }
-
-  /**
-   * ANCHOR 잔액 변경 이력 저장
-   */
-  async createUserBalanceChangeLog(
-    userId: number,
-    beforeAmount: number,
-    amount: number,
-    code: BalanceChangeCode,
-    note?: string,
-    refId?: number,
-  ): Promise<UserBalanceChangeLog> {
-    const afterAmount = beforeAmount + amount;
-
-    const log = new UserBalanceChangeLog(
-      0, // ID는 나중에 할당
-      userId,
-      amount,
-      beforeAmount,
-      afterAmount,
-      code,
-      note ?? null,
-      refId ?? null,
-    );
-
-    const createdLog = await this.balanceLogRepository.create(log);
-    return createdLog;
   }
 }
