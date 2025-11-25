@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { DomainExceptionFilter } from '@common/exception/domain-exception.filter';
-import { ValidationExceptionFilter } from '@common/exception/validation-exception.filter';
+import { ApplicationExceptionFilter } from '@/@common/exception/application-exception.filter';
 
 describe('OrderController (E2E)', () => {
   let app: INestApplication;
@@ -25,7 +25,7 @@ describe('OrderController (E2E)', () => {
     );
     app.useGlobalFilters(
       new DomainExceptionFilter(),
-      new ValidationExceptionFilter(),
+      new ApplicationExceptionFilter(),
     );
 
     await app.init();
