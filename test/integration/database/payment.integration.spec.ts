@@ -25,10 +25,10 @@ import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { User } from '@/user/domain/entities/user.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
-  setupIntegrationTest,
+  setupDatabaseTest,
   cleanupDatabase,
   teardownIntegrationTest,
-} from './setup';
+} from '../setup';
 
 describe('결제 처리 통합 테스트 (US-009)', () => {
   let prismaService: PrismaService;
@@ -40,7 +40,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
   let userRepository: UserPrismaRepository;
 
   beforeAll(async () => {
-    prismaService = await setupIntegrationTest();
+    prismaService = await setupDatabaseTest();
   }, 60000); // 60초 타임아웃
 
   afterAll(async () => {

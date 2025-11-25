@@ -5,17 +5,17 @@ import {
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
-  setupIntegrationTest,
+  setupDatabaseTest,
   cleanupDatabase,
   teardownIntegrationTest,
-} from './setup';
+} from '../setup';
 
 describe('CouponService Integration Tests', () => {
   let prismaService: PrismaService;
   let couponRepository: CouponPrismaRepository;
 
   beforeAll(async () => {
-    prismaService = await setupIntegrationTest();
+    prismaService = await setupDatabaseTest();
   }, 60000); // 60초 타임아웃
 
   afterAll(async () => {
