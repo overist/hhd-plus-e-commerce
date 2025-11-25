@@ -29,7 +29,6 @@ import { CartController } from '@/cart/presentation/cart.controller';
     // UseCase
     GetCartUseCase,
     AddCartUseCase,
-    // Remove use case
     RemoveCartUseCase,
   ],
   exports: [CartDomainService, ICartRepository],

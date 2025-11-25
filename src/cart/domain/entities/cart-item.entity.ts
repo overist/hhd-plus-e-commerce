@@ -32,31 +32,42 @@ export class CartItem {
   /**
    * 소유 검증
    */
-  validateUserId(userId: number): void {
+  validateOwnership(userId: number): void {
     if (this.userId !== userId) {
       throw new DomainException(ErrorCode.UNAUTHORIZED);
     }
   }
 
-  // /**
-  //  * 생성
-  //  */
-  // static create(
-  //   userId: number,
-  //   productOptionId: number,
-  //   quantity: number,
-  // ): CartItem {
-  //   const now = new Date();
-  //   return new CartItem(0, userId, productOptionId, quantity, now, now);
-  // }
-
   /**
-   * 수량 변경
+   * 수량 증가
    * RF-005: 사용자는 장바구니에 상품을 추가할 수 있어야 한다
    */
-  updateQuantity(quantity: number): void {
-    this.validateQuantity();
-    this.quantity = quantity;
+  increaseQuantity(amount: number): void {
+    if (amount <= 0) {
+      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+    }
+    this.quantity += amount;
     this.updatedAt = new Date();
+  }
+
+  /**
+   * 수량 감소
+   */
+  decreaseQuantity(amount: number = 1): void {
+    if (amount <= 0) {
+      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+    }
+    if (this.quantity - amount < 0) {
+      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+    }
+    this.quantity -= amount;
+    this.updatedAt = new Date();
+  }
+
+  /**
+   * 삭제 가능 여부 (수량이 1이하인 경우)
+   */
+  shouldBeRemoved(): boolean {
+    return this.quantity <= 1;
   }
 }

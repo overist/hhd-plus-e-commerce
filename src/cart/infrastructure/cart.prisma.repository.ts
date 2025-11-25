@@ -31,6 +31,20 @@ export class CartPrismaRepository implements ICartRepository {
     return records.map((record) => this.mapToDomain(record));
   }
 
+  // ANCHOR findByUserIdAndProductOptionId
+  async findByUserIdAndProductOptionId(
+    userId: number,
+    productOptionId: number,
+  ): Promise<CartItem | null> {
+    const record = await this.prismaClient.cart_items.findFirst({
+      where: {
+        user_id: userId,
+        product_option_id: productOptionId,
+      },
+    });
+    return record ? this.mapToDomain(record) : null;
+  }
+
   // ANCHOR create
   async create(
     userId: number,
@@ -61,16 +75,10 @@ export class CartPrismaRepository implements ICartRepository {
     return this.mapToDomain(updated);
   }
 
-  // ANCHOR deleteByUserCart
-  async deleteByUserCart(
-    userId: number,
-    productOptionId: number,
-  ): Promise<void> {
-    await this.prismaClient.cart_items.deleteMany({
-      where: {
-        user_id: userId,
-        product_option_id: productOptionId,
-      },
+  // ANCHOR delete
+  async delete(id: number): Promise<void> {
+    await this.prismaClient.cart_items.delete({
+      where: { id: BigInt(id) },
     });
   }
 

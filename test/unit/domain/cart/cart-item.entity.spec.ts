@@ -96,14 +96,14 @@ describe('CartItem Entity', () => {
     });
   });
 
-  describe('validateUserId', () => {
+  describe('validateOwnership', () => {
     it('userId가 일치하면 검증을 통과한다', () => {
       // given
       const userId = 100;
       const cartItem = new CartItem(1, userId, 200, 5, new Date(), new Date());
 
       // when & then
-      expect(() => cartItem.validateUserId(userId)).not.toThrow();
+      expect(() => cartItem.validateOwnership(userId)).not.toThrow();
     });
 
     it('userId가 일치하지 않으면 UNAUTHORIZED 예외를 던진다', () => {
@@ -113,12 +113,12 @@ describe('CartItem Entity', () => {
       const cartItem = new CartItem(1, userId, 200, 5, new Date(), new Date());
 
       // when & then
-      expect(() => cartItem.validateUserId(differentUserId)).toThrow(
+      expect(() => cartItem.validateOwnership(differentUserId)).toThrow(
         DomainException,
       );
 
       try {
-        cartItem.validateUserId(differentUserId);
+        cartItem.validateOwnership(differentUserId);
       } catch (error) {
         expect(error).toBeInstanceOf(DomainException);
         expect((error as DomainException).errorCode).toBe(
@@ -128,22 +128,79 @@ describe('CartItem Entity', () => {
     });
   });
 
-  describe('updateQuantity', () => {
-    it('유효한 수량으로 변경하고 updatedAt을 갱신한다', () => {
+  describe('increaseQuantity', () => {
+    it('유효한 수량을 증가시키고 updatedAt을 갱신한다', () => {
       // given
       const cartItem = new CartItem(1, 100, 200, 5, new Date(), new Date());
       const originalUpdatedAt = cartItem.updatedAt;
-      const newQuantity = 10;
 
       // when
-      cartItem.updateQuantity(newQuantity);
+      cartItem.increaseQuantity(3);
 
       // then
-      expect(cartItem.quantity).toBe(newQuantity);
-      expect(cartItem.updatedAt).not.toBe(originalUpdatedAt);
+      expect(cartItem.quantity).toBe(8);
       expect(cartItem.updatedAt.getTime()).toBeGreaterThanOrEqual(
         originalUpdatedAt.getTime(),
       );
+    });
+
+    it('0 이하의 수량이면 INVALID_QUANTITY 예외를 던진다', () => {
+      // given
+      const cartItem = new CartItem(1, 100, 200, 5, new Date(), new Date());
+
+      // when & then
+      expect(() => cartItem.increaseQuantity(0)).toThrow(ValidationException);
+      expect(() => cartItem.increaseQuantity(-1)).toThrow(ValidationException);
+    });
+  });
+
+  describe('decreaseQuantity', () => {
+    it('유효한 수량을 감소시키고 updatedAt을 갱신한다', () => {
+      // given
+      const cartItem = new CartItem(1, 100, 200, 5, new Date(), new Date());
+
+      // when
+      cartItem.decreaseQuantity(2);
+
+      // then
+      expect(cartItem.quantity).toBe(3);
+    });
+
+    it('기본값 1만큼 감소시킨다', () => {
+      // given
+      const cartItem = new CartItem(1, 100, 200, 5, new Date(), new Date());
+
+      // when
+      cartItem.decreaseQuantity();
+
+      // then
+      expect(cartItem.quantity).toBe(4);
+    });
+
+    it('결과가 음수가 되면 INVALID_QUANTITY 예외를 던진다', () => {
+      // given
+      const cartItem = new CartItem(1, 100, 200, 2, new Date(), new Date());
+
+      // when & then
+      expect(() => cartItem.decreaseQuantity(5)).toThrow(ValidationException);
+    });
+  });
+
+  describe('shouldBeRemoved', () => {
+    it('수량이 1이면 true를 반환한다', () => {
+      // given
+      const cartItem = new CartItem(1, 100, 200, 1, new Date(), new Date());
+
+      // when & then
+      expect(cartItem.shouldBeRemoved()).toBe(true);
+    });
+
+    it('수량이 2 이상이면 false를 반환한다', () => {
+      // given
+      const cartItem = new CartItem(1, 100, 200, 2, new Date(), new Date());
+
+      // when & then
+      expect(cartItem.shouldBeRemoved()).toBe(false);
     });
   });
 });

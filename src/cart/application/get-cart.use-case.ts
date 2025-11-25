@@ -1,7 +1,5 @@
 import { CartDomainService } from '@/cart/domain/services/cart.service';
-import { Product } from '@/product/domain/entities/product.entity';
 import { ProductDomainService } from '@/product/domain/services/product.service';
-import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { Injectable } from '@nestjs/common';
 import { GetCartQuery, GetCartResult } from './dto/get-cart.dto';
 
@@ -16,31 +14,21 @@ export class GetCartUseCase {
    * 장바구니-상품옵션 조회 뷰 반환
    */
   async execute(query: GetCartQuery): Promise<GetCartResult[]> {
-    const cartItems = await this.cartService.getCart(query.userId);
-
-    if (cartItems.length === 0) {
-      return [];
-    }
+    const cartItems = await this.cartService.getCartItems(query.userId);
+    if (cartItems.length === 0) return [];
 
     const optionIds = cartItems.map((item) => item.productOptionId);
-    const productOptions =
-      await this.productService.getProductOptionsByIds(optionIds);
+    const options = await this.productService.getProductOptionsByIds(optionIds);
+    const optionMap = new Map(options.map((o) => [o.id, o]));
 
-    const productIds = [
-      ...new Set(productOptions.map((option) => option.productId)),
-    ];
-
+    const productIds = [...new Set(options.map((o) => o.productId))];
     const products = await this.productService.getProductsByIds(productIds);
-
-    const productMap = new Map<number, Product>();
-    products.forEach((product) => productMap.set(product.id, product));
-
-    const productOptionMap = new Map<number, ProductOption>();
-    productOptions.forEach((option) => productOptionMap.set(option.id, option));
+    const productMap = new Map(products.map((p) => [p.id, p]));
 
     return cartItems.map((item) => {
-      const option = productOptionMap.get(item.productOptionId)!;
+      const option = optionMap.get(item.productOptionId)!;
       const product = productMap.get(option.productId)!;
+
       return GetCartResult.fromDomain(item, option, product);
     });
   }

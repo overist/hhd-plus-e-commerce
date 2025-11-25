@@ -7,14 +7,15 @@ import { CartItem } from '@/cart/domain/entities/cart-item.entity';
 export abstract class ICartRepository {
   abstract findById(id: number): Promise<CartItem | null>;
   abstract findManyByUserId(userId: number): Promise<CartItem[]>;
+  abstract findByUserIdAndProductOptionId(
+    userId: number,
+    productOptionId: number,
+  ): Promise<CartItem | null>;
   abstract create(
     userId: number,
     productOptionId: number,
     quantity: number,
   ): Promise<CartItem>;
   abstract update(cartItem: CartItem): Promise<CartItem>;
-  abstract deleteByUserCart(
-    userId: number,
-    productOptionId: number,
-  ): Promise<void>;
+  abstract delete(id: number): Promise<void>;
 }

@@ -22,6 +22,19 @@ export class CartMemoryRepository implements ICartRepository {
     );
   }
 
+  // ANCHOR findByUserIdAndProductOptionId
+  async findByUserIdAndProductOptionId(
+    userId: number,
+    productOptionId: number,
+  ): Promise<CartItem | null> {
+    return (
+      Array.from(this.cartItems.values()).find(
+        (item) =>
+          item.userId === userId && item.productOptionId === productOptionId,
+      ) || null
+    );
+  }
+
   // ANCHOR create
   async create(
     userId: number,
@@ -46,15 +59,8 @@ export class CartMemoryRepository implements ICartRepository {
     return cartItem;
   }
 
-  // ANCHOR deleteByUserCart
-  async deleteByUserCart(
-    userId: number,
-    productOptionId: number,
-  ): Promise<void> {
-    for (const [id, item] of this.cartItems) {
-      if (item.userId === userId && item.productOptionId === productOptionId) {
-        this.cartItems.delete(id);
-      }
-    }
+  // ANCHOR delete
+  async delete(id: number): Promise<void> {
+    this.cartItems.delete(id);
   }
 }
