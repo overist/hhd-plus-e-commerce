@@ -6,14 +6,35 @@ import {
   ParseIntPipe,
   Patch,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { ProductFacade } from '@/product/application/product.facade';
-import { GetProductsResponseDto } from './dto/get-products.dto';
-import { GetProductDetailResponseDto } from './dto/get-product-detail.dto';
-import { GetTopProductsResponseDto } from './dto/get-top-products.dto';
-import { ProductDomainService } from '@/product/domain/services/product.service';
 import { AdminGuard } from '@common/guards/admin.guard';
+
+// DTOs
+import {
+  GetProductsRequest,
+  GetProductsResponse,
+} from './dto/get-products.dto';
+import {
+  GetProductDetailRequest,
+  GetProductDetailResponse,
+} from './dto/get-product-detail.dto';
+import {
+  GetTopProductsRequest,
+  GetTopProductsResponse,
+} from './dto/get-top-products.dto';
+import {
+  UpdateStockRequest,
+  UpdateStockResponse,
+} from './dto/update-stock.dto';
+
+// Use Cases
+import { GetProductsUseCase } from '@/product/application/get-products.use-case';
+import { GetProductDetailUseCase } from '@/product/application/get-product-detail.use-case';
+import { GetTopProductsUseCase } from '@/product/application/get-top-products.use-case';
+import { UpdateStockUseCase } from '@/product/application/update-stock.use-case';
 
 /**
  * Product Controller
@@ -23,8 +44,10 @@ import { AdminGuard } from '@common/guards/admin.guard';
 @Controller('api/products')
 export class ProductController {
   constructor(
-    private readonly productFacade: ProductFacade,
-    private readonly productService: ProductDomainService,
+    private readonly getProductsUseCase: GetProductsUseCase,
+    private readonly getProductDetailUseCase: GetProductDetailUseCase,
+    private readonly getTopProductsUseCase: GetTopProductsUseCase,
+    private readonly updateStockUseCase: UpdateStockUseCase,
   ) {}
 
   /**
@@ -39,19 +62,13 @@ export class ProductController {
   @ApiResponse({
     status: 200,
     description: '상품 목록 조회 성공',
-    type: GetProductsResponseDto,
+    type: GetProductsResponse,
   })
-  async getProducts(): Promise<GetProductsResponseDto> {
-    // return await this.productService.getProductsWithFilter();
+  async getProducts(): Promise<GetProductsResponse> {
+    const query = GetProductsRequest.toQuery();
+    const result = await this.getProductsUseCase.execute(query);
 
-    const products = await this.productService.getProductsOnSale();
-
-    return {
-      products: products.map((product) => ({
-        ...product,
-        productId: product.id,
-      })),
-    };
+    return { data: result };
   }
 
   /**
@@ -66,17 +83,13 @@ export class ProductController {
   @ApiResponse({
     status: 200,
     description: '상위 상품 조회 성공',
-    type: GetTopProductsResponseDto,
+    type: GetTopProductsResponse,
   })
-  async getTopProducts(): Promise<GetTopProductsResponseDto> {
-    const topProducts = await this.productService.getTopProducts(5);
-    return {
-      products: topProducts.map((snapshot) => ({
-        ...snapshot,
-        productId: snapshot.productId,
-        name: snapshot.productName,
-      })),
-    };
+  async getTopProducts(): Promise<GetTopProductsResponse> {
+    const query = GetTopProductsRequest.toQuery(5);
+    const result = await this.getTopProductsUseCase.execute(query);
+
+    return { data: result };
   }
 
   /**
@@ -92,24 +105,16 @@ export class ProductController {
   @ApiResponse({
     status: 200,
     description: '상품 상세 조회 성공',
-    type: GetProductDetailResponseDto,
+    type: GetProductDetailResponse,
   })
   @ApiResponse({ status: 404, description: '상품을 찾을 수 없음' })
   async getProductDetail(
     @Param('productId', ParseIntPipe) productId: number,
-  ): Promise<GetProductDetailResponseDto> {
-    const productDetailView =
-      await this.productFacade.getProductDetailView(productId);
-    return {
-      product: {
-        ...productDetailView.product,
-        productId: productDetailView.product.id,
-      },
-      options: productDetailView.options.map((option) => ({
-        ...option,
-        productOptionId: option.id,
-      })),
-    };
+  ): Promise<GetProductDetailResponse> {
+    const query = GetProductDetailRequest.toQuery(productId);
+    const result = await this.getProductDetailUseCase.execute(query);
+
+    return { data: result };
   }
 
   /**
@@ -118,24 +123,23 @@ export class ProductController {
    */
   @Patch('options/:optionId/stock')
   @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '상품 옵션 재고 수량 수정',
     description: '상품 옵션의 재고 수량을 관리자 권한으로 수정합니다.',
   })
-  @ApiParam({ name: 'productOptionId', description: '상품 옵션 ID' })
+  @ApiParam({ name: 'optionId', description: '상품 옵션 ID' })
   @ApiResponse({
     status: 200,
     description: '상품 옵션 재고 수량 수정 성공',
   })
   @ApiResponse({ status: 404, description: '상품 옵션을 찾을 수 없음' })
   async updateStock(
-    @Param('productOptionId', ParseIntPipe) productOptionId: number,
-    @Body() dto: { operation: 'increase' | 'decrease'; quantity: number },
-  ): Promise<void> {
-    await this.productFacade.updateStock(
-      productOptionId,
-      dto.quantity,
-      dto.operation,
-    );
+    @Param('optionId', ParseIntPipe) optionId: number,
+    @Body() dto: UpdateStockRequest,
+  ): Promise<UpdateStockResponse> {
+    const command = UpdateStockRequest.toCommand(optionId, dto);
+
+    return await this.updateStockUseCase.execute(command);
   }
 }

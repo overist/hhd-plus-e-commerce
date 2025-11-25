@@ -1,35 +1,27 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  GetTopProductsQuery,
+  GetTopProductsResult,
+} from '@/product/application/dto/get-top-products.dto';
 
 /**
- * 인기 상품 DTO
+ * 인기 상품 조회 요청 DTO
  */
-export class TopProductDto {
-  @ApiProperty({ description: '순위' })
-  rank: number;
-
-  @ApiProperty({ description: '상품 ID' })
-  productId: number;
-
-  @ApiProperty({ description: '상품명' })
-  name: string;
-
-  @ApiProperty({ description: '가격' })
-  price: number;
-
-  @ApiProperty({ description: '카테고리' })
-  category: string;
-
-  @ApiProperty({ description: '판매 수량' })
-  salesCount: number;
+export class GetTopProductsRequest {
+  static toQuery(count: number): GetTopProductsQuery {
+    const query = new GetTopProductsQuery();
+    query.count = count;
+    return query;
+  }
 }
 
 /**
  * 인기 상품 조회 응답 DTO
  */
-export class GetTopProductsResponseDto {
+export class GetTopProductsResponse {
   @ApiProperty({
     description: '인기 상품 목록',
-    type: [TopProductDto],
+    type: [GetTopProductsResult],
   })
-  products: TopProductDto[];
+  data: GetTopProductsResult[];
 }

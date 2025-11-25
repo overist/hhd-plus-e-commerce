@@ -1,55 +1,27 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  GetProductDetailQuery,
+  GetProductDetailResult,
+} from '@/product/application/dto/get-product-detail.dto';
 
 /**
- * 상품 옵션 DTO
+ * 상품 상세 조회 요청 DTO
  */
-export class ProductOptionDto {
-  @ApiProperty({ description: '상품 옵션 ID' })
-  productOptionId: number;
-
-  @ApiProperty({ description: '색상', nullable: true })
-  color: string | null;
-
-  @ApiProperty({ description: '사이즈', nullable: true })
-  size: string | null;
-
-  @ApiProperty({ description: '재고 수량' })
-  stock: number;
-}
-
-/**
- * 상품 상세 DTO
- */
-export class ProductDetailDto {
+export class GetProductDetailRequest {
   @ApiProperty({ description: '상품 ID' })
   productId: number;
 
-  @ApiProperty({ description: '상품명' })
-  name: string;
-
-  @ApiProperty({ description: '가격' })
-  price: number;
-
-  @ApiProperty({ description: '카테고리' })
-  category: string;
-
-  @ApiProperty({ description: '상품 설명' })
-  description: string;
-
-  @ApiProperty({ description: '판매 가능 여부' })
-  isAvailable: boolean;
+  static toQuery(productId: number): GetProductDetailQuery {
+    const query = new GetProductDetailQuery();
+    query.productId = productId;
+    return query;
+  }
 }
 
 /**
  * 상품 상세 조회 응답 DTO
  */
-export class GetProductDetailResponseDto {
-  @ApiProperty({ description: '상품 정보' })
-  product: ProductDetailDto;
-
-  @ApiProperty({
-    description: '상품 옵션 목록',
-    type: [ProductOptionDto],
-  })
-  options: ProductOptionDto[];
+export class GetProductDetailResponse {
+  @ApiProperty({ description: '상품 상세 정보' })
+  data: GetProductDetailResult;
 }

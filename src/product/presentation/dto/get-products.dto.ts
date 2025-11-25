@@ -1,32 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  GetProductsQuery,
+  GetProductsResult,
+} from '@/product/application/dto/get-products.dto';
 
 /**
- * 상품 목록 조회 응답 DTO
+ * 상품 목록 조회 요청 DTO
  */
-export class ProductDto {
-  @ApiProperty({ description: '상품 ID' })
-  productId: number;
-
-  @ApiProperty({ description: '상품명' })
-  name: string;
-
-  @ApiProperty({ description: '가격' })
-  price: number;
-
-  @ApiProperty({ description: '카테고리' })
-  category: string;
-
-  @ApiProperty({ description: '판매 가능 여부' })
-  isAvailable: boolean;
+export class GetProductsRequest {
+  static toQuery(): GetProductsQuery {
+    return new GetProductsQuery();
+  }
 }
 
 /**
  * 상품 목록 조회 응답 DTO
  */
-export class GetProductsResponseDto {
+export class GetProductsResponse {
   @ApiProperty({
     description: '상품 목록',
-    type: [ProductDto],
+    type: [GetProductsResult],
   })
-  products: ProductDto[];
+  data: GetProductsResult[];
 }
