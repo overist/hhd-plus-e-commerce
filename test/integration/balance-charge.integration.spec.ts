@@ -1,4 +1,4 @@
-import { UserFacade } from '@/user/application/user.facade';
+import { ChargeBalanceUseCase } from '@/user/application/charge-balance.use-case';
 import { UserDomainService } from '@/user/domain/services/user.service';
 import {
   UserPrismaRepository,
@@ -14,7 +14,7 @@ import {
 
 describe('잔액 충전 통합 테스트 (관리자 기능)', () => {
   let prismaService: PrismaService;
-  let userFacade: UserFacade;
+  let chargeBalanceUseCase: ChargeBalanceUseCase;
   let userRepository: UserPrismaRepository;
 
   beforeAll(async () => {
@@ -35,9 +35,10 @@ describe('잔액 충전 통합 테스트 (관리자 기능)', () => {
     const userDomainService = new UserDomainService(
       userRepository,
       balanceLogRepository,
+      prismaService,
     );
 
-    userFacade = new UserFacade(userDomainService);
+    chargeBalanceUseCase = new ChargeBalanceUseCase(userDomainService);
   });
 
   describe('user.balance 동시성', () => {
@@ -48,7 +49,7 @@ describe('잔액 충전 통합 테스트 (관리자 기능)', () => {
       // When: 3번 동시에 5,000원씩 충전
       await Promise.all(
         Array.from({ length: 3 }, () =>
-          userFacade.chargeBalance(user.id, 5000),
+          chargeBalanceUseCase.execute({ userId: user.id, amount: 5000 }),
         ),
       );
 

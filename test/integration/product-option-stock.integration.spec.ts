@@ -1,4 +1,4 @@
-import { OrderFacade } from '@/order/application/order.facade';
+import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
 import { OrderDomainService } from '@/order/domain/services/order.service';
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
@@ -31,7 +31,7 @@ import {
 
 describe('동시성 제어 통합 테스트', () => {
   let prismaService: PrismaService;
-  let orderFacade: OrderFacade;
+  let createOrderUseCase: CreateOrderUseCase;
   let productRepository: ProductPrismaRepository;
   let productOptionRepository: ProductOptionRepository;
   let userRepository: UserPrismaRepository;
@@ -64,6 +64,9 @@ describe('동시성 제어 통합 테스트', () => {
       async create() {
         return null;
       }
+      async findTop() {
+        return [];
+      }
     })();
 
     const orderService = new OrderDomainService(
@@ -75,19 +78,15 @@ describe('동시성 제어 통합 테스트', () => {
       productOptionRepository,
       productPopularitySnapshotRepository as any,
     );
-    const couponService = new CouponDomainService(
-      couponRepository,
-      userCouponRepository,
-    );
     const userService = new UserDomainService(
       userRepository,
       balanceLogRepository,
+      prismaService,
     );
 
-    orderFacade = new OrderFacade(
+    createOrderUseCase = new CreateOrderUseCase(
       orderService,
       productService,
-      couponService,
       userService,
       prismaService,
     );
@@ -123,9 +122,10 @@ describe('동시성 제어 통합 테스트', () => {
       // When: 10명이 각각 10개씩 동시 주문
       await Promise.all(
         users.map((user) =>
-          orderFacade.createOrder(user.id, [
-            { productOptionId: productOption.id, quantity: 10 },
-          ]),
+          createOrderUseCase.execute({
+            userId: user.id,
+            items: [{ productOptionId: productOption.id, quantity: 10 }],
+          }),
         ),
       );
 
