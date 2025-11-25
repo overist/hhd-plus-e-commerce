@@ -11,11 +11,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { AddCartRequestDto } from './dto/add-cart.dto';
-import { GetCartResponseDto } from './dto/get-cart.dto';
-import { CartDomainService } from '@/cart/domain/services/cart.service';
-import { CartFacade } from '@/cart/application/cart.facade';
 import { AuthGuard } from '@common/guards/auth.guard';
+
+// DTOs
+import { AddCartRequest, AddCartResponse } from './dto/add-cart.dto';
+import { GetCartResponse, GetCartRequest } from './dto/get-cart.dto';
+import { RemoveCartRequest, RemoveCartResponse } from './dto/remove-cart.dto';
+
+// Use Cases
+import { GetCartUseCase } from '@/cart/application/get-cart.use-case';
+import { AddCartUseCase } from '@/cart/application/add-cart.use-case';
+import { RemoveCartUseCase } from '@/cart/application/remove-cart.use-case';
 
 /**
  * Cart Controller
@@ -25,9 +31,35 @@ import { AuthGuard } from '@common/guards/auth.guard';
 @Controller('api/users/:userId/cart')
 export class CartController {
   constructor(
-    private readonly cartService: CartDomainService,
-    private readonly cartFacade: CartFacade,
+    private readonly getCartUseCase: GetCartUseCase,
+    private readonly addCartUseCase: AddCartUseCase,
+    private readonly removeCartUseCase: RemoveCartUseCase,
   ) {}
+
+  /**
+   * ANCHOR 장바구니 조회 (US-006)
+   */
+  @Get()
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary: '장바구니 조회',
+    description: '장바구니에 담긴 상품 목록을 조회합니다.',
+  })
+  @ApiParam({ name: 'userId', description: '사용자 ID' })
+  @ApiResponse({
+    status: 200,
+    description: '장바구니 조회 성공(빈 장바구니 포함)',
+    type: GetCartResponse,
+  })
+  @ApiResponse({ status: 404, description: '사용자를 찾을 수 없음' })
+  async getCart(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param() dto: GetCartRequest,
+  ): Promise<GetCartResponse> {
+    const query = GetCartRequest.toQuery(userId, dto);
+    const result = await this.getCartUseCase.execute(query);
+    return { data: result } as GetCartResponse;
+  }
 
   /**
    * ANCHOR 장바구니 상품 추가 (US-005)
@@ -48,32 +80,11 @@ export class CartController {
   @ApiResponse({ status: 404, description: '상품 옵션을 찾을 수 없음' })
   async addCart(
     @Param('userId', ParseIntPipe) userId: number,
-    @Body() dto: AddCartRequestDto,
-  ): Promise<void> {
-    return this.cartService.addCart(userId, dto.productOptionId, dto.quantity);
-  }
+    @Body() dto: AddCartRequest,
+  ): Promise<AddCartResponse> {
+    const command = AddCartRequest.toCommand(userId, dto);
 
-  /**
-   * ANCHOR 장바구니 조회 (US-006)
-   */
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiOperation({
-    summary: '장바구니 조회',
-    description: '장바구니에 담긴 상품 목록을 조회합니다.',
-  })
-  @ApiParam({ name: 'userId', description: '사용자 ID' })
-  @ApiResponse({
-    status: 200,
-    description: '장바구니 조회 성공(빈 장바구니 포함)',
-    type: GetCartResponseDto,
-  })
-  @ApiResponse({ status: 404, description: '사용자를 찾을 수 없음' })
-  async getCart(
-    @Param('userId', ParseIntPipe) userId: number,
-  ): Promise<GetCartResponseDto> {
-    const items = await this.cartFacade.getCartView(userId);
-    return { items };
+    return await this.addCartUseCase.execute(command);
   }
 
   /**
@@ -96,9 +107,11 @@ export class CartController {
   @ApiResponse({ status: 403, description: '권한 없음' })
   async removeCart(
     @Param('userId', ParseIntPipe) userId: number,
-    @Param('productOptionId', ParseIntPipe) productOptionId: number,
-  ): Promise<void> {
-    await this.cartService.removeCart(userId, productOptionId);
+    @Param() dto: RemoveCartRequest,
+  ): Promise<RemoveCartResponse> {
+    const command = RemoveCartRequest.toCommand(userId, dto);
+
+    return await this.removeCartUseCase.execute(command);
   }
 
   // TODO 장바구니 수량 수정

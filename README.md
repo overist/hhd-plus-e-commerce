@@ -66,6 +66,17 @@ src/
 - **Domain**: 핵심 비즈니스 규칙 및 엔티티
 - **Infrastructure**: 외부 의존성 (Repository, Module)
 
+** 계층별 DTO **
+
+- Presentation DTO: RequestDTO, ResponseDTO
+  - Application ResultDTO를 의존함
+- Application DTO: QueryDTO/CommandDTO, ResultDTO
+  - Domain Entity를 의존함
+  - CQRS 전환 가능하게 설계
+  - 1개의 UseCase와 1개의 DTO는 1대1 대응
+- Infrastructure DTO: toDomain Mapper, fromDomain Mapper
+  - Domain Entity를 의존함
+
 ## ⏰ 배치 스케줄러
 
 ### 1. 인기 상품 스냅샷 (매일 자정)

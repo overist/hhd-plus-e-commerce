@@ -1,41 +1,27 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  GetCartQuery,
+  GetCartResult,
+} from '@/cart/application/dto/get-cart.dto';
 
-/**
- * 장바구니 항목 DTO
- */
-export class CartViewDto {
-  @ApiProperty({ description: '장바구니 항목 ID' })
-  cartItemId: number;
+export class GetCartRequest {
+  @ApiProperty({ description: '사용자 ID' })
+  userId: number;
 
-  @ApiProperty({ description: '상품 ID' })
-  productId: number;
-
-  @ApiProperty({ description: '상품명' })
-  productName: string;
-
-  @ApiProperty({ description: '상품 옵션 ID' })
-  productOptionId: number;
-
-  @ApiProperty({ description: '옵션 색상', nullable: true })
-  productOptionColor: string | null;
-
-  @ApiProperty({ description: '옵션 사이즈', nullable: true })
-  productOptionSize: string | null;
-
-  @ApiProperty({ description: '가격' })
-  price: number;
-
-  @ApiProperty({ description: '수량' })
-  quantity: number;
+  static toQuery(userId: number, dto: GetCartRequest): GetCartQuery {
+    const query = new GetCartQuery();
+    query.userId = userId;
+    return query;
+  }
 }
 
 /**
  * 장바구니 조회 응답 DTO
  */
-export class GetCartResponseDto {
+export class GetCartResponse {
   @ApiProperty({
     description: '장바구니 항목 목록',
-    type: [CartViewDto],
+    type: [GetCartResult],
   })
-  items: CartViewDto[];
+  data: GetCartResult[];
 }

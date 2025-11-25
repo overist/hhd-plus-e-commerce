@@ -1,11 +1,11 @@
-import { AddCartCommand } from '@/cart/application/dto/add-cart.dto';
+import { RemoveCartCommand } from '@/cart/application/dto/remove-cart.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsPositive, Min } from 'class-validator';
 
 /**
  * 장바구니 추가 요청 DTO
  */
-export class AddCartRequest {
+export class RemoveCartRequest {
   @ApiProperty({
     description: '상품 옵션 ID',
     example: 1,
@@ -23,8 +23,8 @@ export class AddCartRequest {
   @Min(1)
   quantity: number;
 
-  static toCommand(userId: number, dto: AddCartRequest): AddCartCommand {
-    const command = new AddCartCommand();
+  static toCommand(userId: number, dto: RemoveCartRequest): RemoveCartCommand {
+    const command = new RemoveCartCommand();
     command.userId = userId;
     command.productOptionId = dto.productOptionId;
     command.quantity = dto.quantity;
@@ -35,4 +35,4 @@ export class AddCartRequest {
 /**
  * 장바구니 추가 응답 DTO (void)
  */
-export class AddCartResponse {}
+export class RemoveCartResponse {}
