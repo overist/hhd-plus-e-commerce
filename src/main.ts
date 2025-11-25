@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 
 // session modules
 import session from 'express-session';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 import { RedisStore } from 'connect-redis';
 
 // validation and exception modules
@@ -31,8 +31,8 @@ async function bootstrap() {
   );
 
   // Redis Session Store
-  const redisClient = createClient({ url: process.env.REDIS_URL as string });
-  await redisClient.connect().catch((err) => {
+  const redisClient = new Redis(process.env.REDIS_URL as string);
+  redisClient.on('error', (err) => {
     console.error('Redis connection error:', err);
   });
   app.use(
