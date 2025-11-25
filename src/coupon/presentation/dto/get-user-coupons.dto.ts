@@ -1,29 +1,30 @@
+import {
+  GetUserCouponsQuery,
+  GetUserCouponsResult,
+} from '@/coupon/application/dto/get-user-coupons.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
- * 쿠폰 정보 DTO
+ * 보유 쿠폰 조회 요청 DTO
  */
-export class CouponViewDto {
-  @ApiProperty({ description: '사용자 쿠폰 ID' })
-  userCouponId: number;
+export class GetUserCouponsRequest {
+  @ApiProperty({ description: '사용자 ID' })
+  userId: number;
 
-  @ApiProperty({ description: '쿠폰 이름' })
-  couponName: string;
-
-  @ApiProperty({ description: '할인율 (%)' })
-  discountRate: number;
-
-  @ApiProperty({ description: '만료 시각' })
-  expiredAt: Date;
+  static toQuery(userId: number): GetUserCouponsQuery {
+    const query = new GetUserCouponsQuery();
+    query.userId = userId;
+    return query;
+  }
 }
 
 /**
  * 보유 쿠폰 조회 응답 DTO
  */
-export class GetUserCouponsResponseDto {
+export class GetUserCouponsResponse {
   @ApiProperty({
     description: '쿠폰 목록',
-    type: [CouponViewDto],
+    type: [GetUserCouponsResult],
   })
-  coupons: CouponViewDto[];
+  data: GetUserCouponsResult[];
 }

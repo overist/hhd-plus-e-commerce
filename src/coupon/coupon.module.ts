@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { CouponFacade } from '@/coupon/application/coupon.facade';
+import { IssueCouponUseCase } from '@/coupon/application/issue-coupon.use-case';
+import { GetUserCouponsUseCase } from '@/coupon/application/get-user-coupons.use-case';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import {
   ICouponRepository,
@@ -33,8 +34,9 @@ import { CouponController } from '@/coupon/presentation/coupon.controller';
     // Domain Service
     CouponDomainService,
 
-    // Facade
-    CouponFacade,
+    // UseCase
+    IssueCouponUseCase,
+    GetUserCouponsUseCase,
   ],
   exports: [CouponDomainService, ICouponRepository, IUserCouponRepository],
 })
