@@ -1,4 +1,4 @@
-import { OrderExpirationScheduler } from '@/@schedulers/order-expiration.scheduler';
+import { OrderExpirationScheduler } from '@schedulers/order-expiration.scheduler';
 import {
   ProductPrismaRepository,
   ProductOptionRepository,

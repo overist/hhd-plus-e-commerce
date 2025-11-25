@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { DomainExceptionFilter } from '@common/exception/domain-exception.filter';
-import { ApplicationExceptionFilter } from '@/@common/exception/application-exception.filter';
+import { ApplicationExceptionFilter } from '@common/exception/application-exception.filter';
 
 describe('CouponController (E2E)', () => {
   let app: INestApplication;

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MutexManager } from '@/@common/mutex-manager/mutex-manager';
+import { MutexManager } from '@common/mutex-manager/mutex-manager';
 import { Product } from '../domain/entities/product.entity';
 import {
   IProductOptionRepository,

@@ -3,7 +3,7 @@ import {
   ICouponRepository,
   IUserCouponRepository,
 } from '@/coupon/domain/interfaces/coupon.repository.interface';
-import { PrismaService } from '@/@common/prisma-manager/prisma.service';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { Prisma } from '@prisma/client';
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
 import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';

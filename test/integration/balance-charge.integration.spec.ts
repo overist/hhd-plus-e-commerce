@@ -5,7 +5,7 @@ import {
   UserBalanceChangeLogRepository,
 } from '@/user/infrastructure/user.prisma.repository';
 import { User } from '@/user/domain/entities/user.entity';
-import { PrismaService } from '@/@common/prisma-manager/prisma.service';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
   setupIntegrationTest,
   cleanupDatabase,
