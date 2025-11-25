@@ -1,3 +1,8 @@
+import {
+  CreateOrderCommand,
+  OrderItemInput,
+  CreateOrderResult,
+} from '@/order/application/dto/create-order.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -10,9 +15,9 @@ import {
 } from 'class-validator';
 
 /**
- * 주문 항목 DTO
+ * 주문 항목 요청 DTO
  */
-export class OrderItemDto {
+export class OrderItemRequestDto {
   @ApiProperty({
     description: '상품 옵션 ID',
     example: 1,
@@ -34,7 +39,7 @@ export class OrderItemDto {
 /**
  * 주문서 생성 요청 DTO
  */
-export class CreateOrderRequestDto {
+export class CreateOrderRequest {
   @ApiProperty({
     description: '사용자 ID',
     example: 1,
@@ -45,13 +50,25 @@ export class CreateOrderRequestDto {
 
   @ApiProperty({
     description: '주문 상품 목록',
-    type: [OrderItemDto],
+    type: [OrderItemRequestDto],
   })
   @IsArray()
   @IsNotEmpty()
   @ValidateNested({ each: true })
-  @Type(() => OrderItemDto)
-  items: OrderItemDto[];
+  @Type(() => OrderItemRequestDto)
+  items: OrderItemRequestDto[];
+
+  static toCommand(dto: CreateOrderRequest): CreateOrderCommand {
+    const command = new CreateOrderCommand();
+    command.userId = dto.userId;
+    command.items = dto.items.map((item) => {
+      const input = new OrderItemInput();
+      input.productOptionId = item.productOptionId;
+      input.quantity = item.quantity;
+      return input;
+    });
+    return command;
+  }
 }
 
 /**
@@ -61,14 +78,11 @@ export class OrderItemResponseDto {
   @ApiProperty({ description: '주문 항목 ID' })
   orderItemId: number;
 
-  @ApiProperty({ description: '상품 ID' })
-  productId?: number;
+  @ApiProperty({ description: '상품 옵션 ID' })
+  productOptionId: number;
 
   @ApiProperty({ description: '상품명' })
   productName: string;
-
-  @ApiProperty({ description: '상품 옵션 ID' })
-  productOptionId: number;
 
   @ApiProperty({ description: '가격' })
   price: number;
@@ -83,7 +97,7 @@ export class OrderItemResponseDto {
 /**
  * 주문서 생성 응답 DTO
  */
-export class CreateOrderResponseDto {
+export class CreateOrderResponse {
   @ApiProperty({ description: '주문 ID' })
   orderId: number;
 
@@ -104,4 +118,16 @@ export class CreateOrderResponseDto {
 
   @ApiProperty({ description: '주문서 만료 시각' })
   expiresAt: Date;
+
+  static fromResult(result: CreateOrderResult): CreateOrderResponse {
+    const response = new CreateOrderResponse();
+    response.orderId = result.orderId;
+    response.userId = result.userId;
+    response.items = result.items;
+    response.totalAmount = result.totalAmount;
+    response.status = result.status;
+    response.createdAt = result.createdAt;
+    response.expiresAt = result.expiresAt;
+    return response;
+  }
 }

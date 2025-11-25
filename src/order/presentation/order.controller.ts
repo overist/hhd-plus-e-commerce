@@ -10,21 +10,29 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { OrderFacade } from '@/order/application/order.facade';
+import { AuthGuard } from '@common/guards/auth.guard';
+
+// DTOs
 import {
-  CreateOrderRequestDto,
-  CreateOrderResponseDto,
+  CreateOrderRequest,
+  CreateOrderResponse,
 } from './dto/create-order.dto';
 import {
-  ProcessPaymentRequestDto,
-  ProcessPaymentResponseDto,
+  ProcessPaymentRequest,
+  ProcessPaymentResponse,
 } from './dto/process-payment.dto';
 import {
-  GetOrdersResponseDto,
-  GetOrderDetailResponseDto,
+  GetOrdersRequest,
+  GetOrdersResponse,
+  GetOrderDetailRequest,
+  GetOrderDetailResponse,
 } from './dto/get-orders.dto';
-import { OrderDomainService } from '@/order/domain/services/order.service';
-import { AuthGuard } from '@common/guards/auth.guard';
+
+// Use Cases
+import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
+import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
+import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
+import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
 /**
  * Order Controller
@@ -34,12 +42,14 @@ import { AuthGuard } from '@common/guards/auth.guard';
 @Controller('api')
 export class OrderController {
   constructor(
-    private readonly orderFacade: OrderFacade,
-    private readonly orderService: OrderDomainService,
+    private readonly createOrderUseCase: CreateOrderUseCase,
+    private readonly processPaymentUseCase: ProcessPaymentUseCase,
+    private readonly getOrdersUseCase: GetOrdersUseCase,
+    private readonly getOrderDetailUseCase: GetOrderDetailUseCase,
   ) {}
 
   /**
-   * 주문서 생성 (US-008)
+   * ANCHOR 주문서 생성 (US-008)
    */
   @Post('orders')
   @UseGuards(AuthGuard)
@@ -51,22 +61,21 @@ export class OrderController {
   @ApiResponse({
     status: 201,
     description: '주문서 생성 완료',
-    type: CreateOrderResponseDto,
+    type: CreateOrderResponse,
   })
   @ApiResponse({ status: 400, description: '재고 부족' })
   @ApiResponse({ status: 404, description: '사용자 또는 상품을 찾을 수 없음' })
   async createOrder(
-    @Body() dto: CreateOrderRequestDto,
-  ): Promise<CreateOrderResponseDto> {
-    const orderCreateView = await this.orderFacade.createOrder(
-      dto.userId,
-      dto.items,
-    );
-    return orderCreateView;
+    @Body() dto: CreateOrderRequest,
+  ): Promise<CreateOrderResponse> {
+    const command = CreateOrderRequest.toCommand(dto);
+    const result = await this.createOrderUseCase.execute(command);
+
+    return CreateOrderResponse.fromResult(result);
   }
 
   /**
-   * 결제 처리 (US-009)
+   * ANCHOR 결제 처리 (US-009)
    */
   @Post('orders/:orderId/payment')
   @UseGuards(AuthGuard)
@@ -79,25 +88,23 @@ export class OrderController {
   @ApiResponse({
     status: 200,
     description: '결제 완료',
-    type: ProcessPaymentResponseDto,
+    type: ProcessPaymentResponse,
   })
   @ApiResponse({ status: 400, description: '잔액 부족 또는 주문서 만료' })
   @ApiResponse({ status: 403, description: '권한 없음' })
   @ApiResponse({ status: 404, description: '주문을 찾을 수 없음' })
   async processPayment(
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() dto: ProcessPaymentRequestDto,
-  ): Promise<ProcessPaymentResponseDto> {
-    const paymentView = await this.orderFacade.processPayment(
-      orderId,
-      dto.userId,
-      dto.userCouponId,
-    );
-    return paymentView;
+    @Body() dto: ProcessPaymentRequest,
+  ): Promise<ProcessPaymentResponse> {
+    const command = ProcessPaymentRequest.toCommand(orderId, dto);
+    const result = await this.processPaymentUseCase.execute(command);
+
+    return ProcessPaymentResponse.fromResult(result);
   }
 
   /**
-   * 주문 내역 조회 (US-012)
+   * ANCHOR 주문 내역 조회 (US-012)
    */
   @Get('users/:userId/orders')
   @UseGuards(AuthGuard)
@@ -109,18 +116,20 @@ export class OrderController {
   @ApiResponse({
     status: 200,
     description: '주문 내역 조회 성공',
-    type: GetOrdersResponseDto,
+    type: GetOrdersResponse,
   })
   @ApiResponse({ status: 404, description: '사용자를 찾을 수 없음' })
   async getOrdersByUser(
     @Param('userId', ParseIntPipe) userId: number,
-  ): Promise<GetOrdersResponseDto> {
-    const orderListView = await this.orderFacade.getOrders(userId);
-    return { orders: orderListView };
+  ): Promise<GetOrdersResponse> {
+    const query = GetOrdersRequest.toQuery(userId);
+    const result = await this.getOrdersUseCase.execute(query);
+
+    return GetOrdersResponse.fromResult(result);
   }
 
   /**
-   * 주문 상세 조회
+   * ANCHOR 주문 상세 조회
    */
   @Get('orders/:orderId')
   @UseGuards(AuthGuard)
@@ -132,13 +141,15 @@ export class OrderController {
   @ApiResponse({
     status: 200,
     description: '주문 상세 조회 성공',
-    type: GetOrderDetailResponseDto,
+    type: GetOrderDetailResponse,
   })
   @ApiResponse({ status: 404, description: '주문을 찾을 수 없음' })
   async getOrderDetail(
     @Param('orderId', ParseIntPipe) orderId: number,
-  ): Promise<GetOrderDetailResponseDto> {
-    const orderDetailView = await this.orderFacade.getOrderDetail(orderId);
-    return { orderDetail: orderDetailView };
+  ): Promise<GetOrderDetailResponse> {
+    const query = GetOrderDetailRequest.toQuery(orderId);
+    const result = await this.getOrderDetailUseCase.execute(query);
+
+    return GetOrderDetailResponse.fromResult(result);
   }
 }

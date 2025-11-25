@@ -1,9 +1,5 @@
 import { Module } from '@nestjs/common';
-import { OrderFacade } from '@/order/application/order.facade';
 import { OrderDomainService } from '@/order/domain/services/order.service';
-import { ProductDomainService } from '@/product/domain/services/product.service';
-import { UserDomainService } from '@/user/domain/services/user.service';
-import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { ProductModule } from '../product/product.module';
 import { UserModule } from '@/user/user.module';
 import { CouponModule } from '../coupon/coupon.module';
@@ -16,6 +12,12 @@ import {
   OrderItemRepository,
 } from '@/order/infrastructure/order.prisma.repository';
 import { OrderController } from '@/order/presentation/order.controller';
+
+// Use Cases
+import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
+import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
+import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
+import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
 /**
  * Order Module
@@ -40,8 +42,11 @@ import { OrderController } from '@/order/presentation/order.controller';
     // Domain Service
     OrderDomainService,
 
-    // Facade
-    OrderFacade,
+    // Use Cases
+    CreateOrderUseCase,
+    ProcessPaymentUseCase,
+    GetOrdersUseCase,
+    GetOrderDetailUseCase,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],
 })

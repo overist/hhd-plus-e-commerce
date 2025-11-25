@@ -1,10 +1,14 @@
+import {
+  ProcessPaymentCommand,
+  ProcessPaymentResult,
+} from '@/order/application/dto/process-payment.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsPositive } from 'class-validator';
 
 /**
  * 결제 처리 요청 DTO
  */
-export class ProcessPaymentRequestDto {
+export class ProcessPaymentRequest {
   @ApiProperty({
     description: '사용자 ID',
     example: 1,
@@ -21,12 +25,23 @@ export class ProcessPaymentRequestDto {
   @IsPositive()
   @IsOptional()
   userCouponId?: number;
+
+  static toCommand(
+    orderId: number,
+    dto: ProcessPaymentRequest,
+  ): ProcessPaymentCommand {
+    const command = new ProcessPaymentCommand();
+    command.orderId = orderId;
+    command.userId = dto.userId;
+    command.userCouponId = dto.userCouponId;
+    return command;
+  }
 }
 
 /**
  * 결제 처리 응답 DTO
  */
-export class ProcessPaymentResponseDto {
+export class ProcessPaymentResponse {
   @ApiProperty({ description: '주문 ID' })
   orderId: number;
 
@@ -41,4 +56,14 @@ export class ProcessPaymentResponseDto {
 
   @ApiProperty({ description: '결제 완료 시각' })
   paidAt: Date;
+
+  static fromResult(result: ProcessPaymentResult): ProcessPaymentResponse {
+    const response = new ProcessPaymentResponse();
+    response.orderId = result.orderId;
+    response.status = result.status;
+    response.paidAmount = result.paidAmount;
+    response.remainingBalance = result.remainingBalance;
+    response.paidAt = result.paidAt;
+    return response;
+  }
 }
