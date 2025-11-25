@@ -1,12 +1,16 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+// session modules
 import session from 'express-session';
 import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
-import { AppModule } from './app.module';
-import { DomainExceptionFilter } from './presentation/common/filters/domain-exception.filter';
-import { ValidationExceptionFilter } from './presentation/common/filters/validation-exception.filter';
+
+// validation and exception modules
+import { ValidationPipe } from '@nestjs/common';
+import { DomainExceptionFilter } from '@common/exception/domain-exception.filter';
+import { ApplicationExceptionFilter } from '@common/exception/application-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,7 +18,7 @@ async function bootstrap() {
   // Global Exception Filters
   app.useGlobalFilters(
     new DomainExceptionFilter(),
-    new ValidationExceptionFilter(),
+    new ApplicationExceptionFilter(),
   );
 
   // Global Validation Pipe

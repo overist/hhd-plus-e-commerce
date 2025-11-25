@@ -1,8 +1,6 @@
-import { User } from '@domain/user/user.entity';
-import { BalanceChangeCode } from '@domain/user/user-balance-change-log.entity';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { DomainException } from '@domain/common/exceptions/domain.exception';
-
+import { User } from '@/user/domain/entities/user.entity';
+import { BalanceChangeCode } from '@/user/domain/entities/user-balance-change-log.entity';
+import { ErrorCode, DomainException } from '@common/exception';
 describe('User Entity', () => {
   describe('생성자', () => {
     it('유효한 값으로 User를 생성한다', () => {

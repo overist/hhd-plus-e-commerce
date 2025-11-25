@@ -1,14 +1,13 @@
-import { ProductDomainService } from '@domain/product/product.service';
-import { Product } from '@domain/product/product.entity';
-import { ProductOption } from '@domain/product/product-option.entity';
-import { ProductPopularitySnapshot } from '@domain/product/product-popularity-snapshot.entity';
+import { ProductDomainService } from '@/product/domain/services/product.service';
+import { Product } from '@/product/domain/entities/product.entity';
+import { ProductOption } from '@/product/domain/entities/product-option.entity';
+import { ProductPopularitySnapshot } from '@/product/domain/entities/product-popularity-snapshot.entity';
 import {
   IProductRepository,
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
-} from '@domain/interfaces/product.repository.interface';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
+} from '@/product/domain/interfaces/product.repository.interface';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('ProductDomainService', () => {
   let productDomainService: ProductDomainService;
@@ -169,8 +168,8 @@ describe('ProductDomainService', () => {
       try {
         await productDomainService.getProduct(productId);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_NOT_FOUND,
         );
       }
@@ -272,8 +271,8 @@ describe('ProductDomainService', () => {
       try {
         await productDomainService.getProductOption(productOptionId);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_OPTION_NOT_FOUND,
         );
       }
@@ -338,8 +337,8 @@ describe('ProductDomainService', () => {
       try {
         await productDomainService.getTopProducts(invalidCount);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ARGUMENT,
         );
       }
@@ -428,8 +427,8 @@ describe('ProductDomainService', () => {
           10,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_OPTION_NOT_FOUND,
         );
       }
@@ -468,8 +467,8 @@ describe('ProductDomainService', () => {
           60,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INSUFFICIENT_STOCK,
         );
       }
@@ -508,8 +507,8 @@ describe('ProductDomainService', () => {
           10,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ARGUMENT,
         );
       }

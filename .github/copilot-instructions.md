@@ -1,9 +1,9 @@
 # 아키텍처 구조
 
-- src/@presentation: DTO, 컨트롤러, 라우터 등을 담당합니다.
-- src/@application: 애플리케이션 계층, 유스케이스를 담당합니다.
-- src/@domain: 도메인 계층, 비즈니스 규칙을 담당합니다.
-- src/@infrastructure: 레포지토리 구현체, 모듈 등을 담당합니다.
+- presentation: DTO, 컨트롤러, 라우터 등을 담당합니다.
+- application: 애플리케이션 계층, 유스케이스를 담당합니다.
+- domain: 도메인 계층, 비즈니스 규칙을 담당합니다.
+- infrastructure: 레포지토리 구현체, 모듈 등을 담당합니다.
 
 # 문서
 

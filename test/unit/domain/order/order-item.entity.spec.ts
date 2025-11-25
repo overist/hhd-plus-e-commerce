@@ -1,6 +1,5 @@
-import { OrderItem } from '@domain/order/order-item.entity';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('OrderItem Entity', () => {
   describe('생성자', () => {
@@ -69,8 +68,8 @@ describe('OrderItem Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_PRICE,
         );
       }
@@ -128,8 +127,8 @@ describe('OrderItem Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_QUANTITY,
         );
       }
@@ -206,8 +205,8 @@ describe('OrderItem Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_AMOUNT,
         );
       }

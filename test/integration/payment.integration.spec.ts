@@ -1,22 +1,29 @@
-import { OrderFacade } from '@application/facades/order.facade';
-import { OrderDomainService } from '@domain/order/order.service';
-import { ProductDomainService } from '@domain/product/product.service';
-import { CouponDomainService } from '@domain/coupon/coupon.service';
-import { UserDomainService } from '@domain/user/user.service';
+import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
+import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
+import { OrderDomainService } from '@/order/domain/services/order.service';
+import { ProductDomainService } from '@/product/domain/services/product.service';
+import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
+import { UserDomainService } from '@/user/domain/services/user.service';
 import {
-  OrderRepository,
+  OrderPrismaRepository,
   OrderItemRepository,
-  ProductRepository,
+} from '@/order/infrastructure/order.prisma.repository';
+import {
+  ProductPrismaRepository,
   ProductOptionRepository,
-  UserRepository,
+} from '@/product/infrastructure/product.prisma.repository';
+import {
+  UserPrismaRepository,
   UserBalanceChangeLogRepository,
-  CouponRepository,
+} from '@/user/infrastructure/user.prisma.repository';
+import {
+  CouponPrismaRepository,
   UserCouponRepository,
-} from '@infrastructure/repositories/prisma';
-import { Product } from '@domain/product/product.entity';
-import { ProductOption } from '@domain/product/product-option.entity';
-import { User } from '@domain/user/user.entity';
-import { PrismaService } from '@infrastructure/prisma/prisma.service';
+} from '@/coupon/infrastructure/coupon.prisma.repository';
+import { Product } from '@/product/domain/entities/product.entity';
+import { ProductOption } from '@/product/domain/entities/product-option.entity';
+import { User } from '@/user/domain/entities/user.entity';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
   setupIntegrationTest,
   cleanupDatabase,
@@ -25,11 +32,12 @@ import {
 
 describe('결제 처리 통합 테스트 (US-009)', () => {
   let prismaService: PrismaService;
-  let orderFacade: OrderFacade;
-  let orderRepository: OrderRepository;
-  let productRepository: ProductRepository;
+  let createOrderUseCase: CreateOrderUseCase;
+  let processPaymentUseCase: ProcessPaymentUseCase;
+  let orderRepository: OrderPrismaRepository;
+  let productRepository: ProductPrismaRepository;
   let productOptionRepository: ProductOptionRepository;
-  let userRepository: UserRepository;
+  let userRepository: UserPrismaRepository;
 
   beforeAll(async () => {
     prismaService = await setupIntegrationTest();
@@ -42,15 +50,15 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
 
-    orderRepository = new OrderRepository(prismaService);
+    orderRepository = new OrderPrismaRepository(prismaService);
     const orderItemRepository = new OrderItemRepository(prismaService);
-    productRepository = new ProductRepository(prismaService);
+    productRepository = new ProductPrismaRepository(prismaService);
     productOptionRepository = new ProductOptionRepository(prismaService);
-    userRepository = new UserRepository(prismaService);
+    userRepository = new UserPrismaRepository(prismaService);
     const balanceLogRepository = new UserBalanceChangeLogRepository(
       prismaService,
     );
-    const couponRepository = new CouponRepository(prismaService);
+    const couponRepository = new CouponPrismaRepository(prismaService);
     const userCouponRepository = new UserCouponRepository(prismaService);
     const productPopularitySnapshotRepository = new (class {
       async findAll() {
@@ -58,6 +66,9 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       }
       async create() {
         return null;
+      }
+      async findTop() {
+        return [];
       }
     })();
 
@@ -77,9 +88,17 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
     const userService = new UserDomainService(
       userRepository,
       balanceLogRepository,
+      prismaService,
     );
 
-    orderFacade = new OrderFacade(
+    createOrderUseCase = new CreateOrderUseCase(
+      orderService,
+      productService,
+      userService,
+      prismaService,
+    );
+
+    processPaymentUseCase = new ProcessPaymentUseCase(
       orderService,
       productService,
       couponService,
@@ -117,16 +136,20 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       // When: 3명이 각각 주문 생성 (재고 선점)
       const orders = await Promise.all(
         users.map((user) =>
-          orderFacade.createOrder(user.id, [
-            { productOptionId: productOption.id, quantity: 10 },
-          ]),
+          createOrderUseCase.execute({
+            userId: user.id,
+            items: [{ productOptionId: productOption.id, quantity: 10 }],
+          }),
         ),
       );
 
       // When: 3명이 동시에 결제 (잔액 차감 + 재고 확정)
       await Promise.all(
         orders.map((order, idx) =>
-          orderFacade.processPayment(order.orderId, users[idx].id),
+          processPaymentUseCase.execute({
+            orderId: order.orderId,
+            userId: users[idx].id,
+          }),
         ),
       );
 
@@ -166,9 +189,10 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
 
       // When: 주문 생성 (재고 선점 성공)
-      const order = await orderFacade.createOrder(user.id, [
-        { productOptionId: productOption.id, quantity: 1 },
-      ]);
+      const order = await createOrderUseCase.execute({
+        userId: user.id,
+        items: [{ productOptionId: productOption.id, quantity: 1 }],
+      });
 
       // Given: 잔액을 부족하게 만듦 (다른 주문으로 소진)
       const userForDeduct = await userRepository.findById(user.id);
@@ -177,7 +201,10 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
 
       // When: 결제 시도 (잔액 부족으로 실패)
       await expect(
-        orderFacade.processPayment(order.orderId, user.id),
+        processPaymentUseCase.execute({
+          orderId: order.orderId,
+          userId: user.id,
+        }),
       ).rejects.toThrow();
 
       // Then: 잔액은 10,000원 유지

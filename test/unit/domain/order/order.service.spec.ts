@@ -1,13 +1,12 @@
-import { OrderDomainService } from '@domain/order/order.service';
+import { OrderDomainService } from '@/order/domain/services/order.service';
 import {
   IOrderRepository,
   IOrderItemRepository,
-} from '@domain/interfaces/order.repository.interface';
-import { Order } from '@domain/order/order.entity';
-import { OrderItem } from '@domain/order/order-item.entity';
-import { OrderStatus } from '@domain/order/order-status.vo';
-import { ValidationException } from '@domain/common/exceptions/domain.exception';
-import { ErrorCode } from '@domain/common/constants/error-code';
+} from '@/order/domain/interfaces/order.repository.interface';
+import { Order } from '@/order/domain/entities/order.entity';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
+import { OrderStatus } from '@/order/domain/entities/order-status.vo';
+import { ErrorCode } from '@common/exception';
 
 describe('OrderDomainService', () => {
   let service: OrderDomainService;
@@ -226,7 +225,7 @@ describe('OrderDomainService', () => {
       expect(orderRepository.findById).toHaveBeenCalledWith(orderId);
     });
 
-    it('given: 존재하지 않는 주문 ID가 주어짐 / when: getOrder 메서드를 호출함 / then: ValidationException을 발생시킴', async () => {
+    it('given: 존재하지 않는 주문 ID가 주어짐 / when: getOrder 메서드를 호출함 / then: DomainException을 발생시킴', async () => {
       // given
       const orderId = 999;
       orderRepository.findById.mockResolvedValue(null);
@@ -236,7 +235,7 @@ describe('OrderDomainService', () => {
         await service.getOrder(orderId);
         fail('예외가 발생해야 합니다');
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
+        expect(error.name).toBe('DomainException');
         expect(error.errorCode).toBe(ErrorCode.ORDER_NOT_FOUND);
       }
     });

@@ -1,23 +1,21 @@
-import { UserDomainService } from '@domain/user/user.service';
-import { User } from '@domain/user/user.entity';
+import { UserDomainService } from '@/user/domain/services/user.service';
+import { User } from '@/user/domain/entities/user.entity';
 import {
   UserBalanceChangeLog,
   BalanceChangeCode,
-} from '@domain/user/user-balance-change-log.entity';
+} from '@/user/domain/entities/user-balance-change-log.entity';
 import {
   IUserRepository,
   IUserBalanceChangeLogRepository,
-} from '@domain/interfaces/user.repository.interface';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import {
-  DomainException,
-  ValidationException,
-} from '@domain/common/exceptions/domain.exception';
+} from '@/user/domain/interfaces/user.repository.interface';
+import { ErrorCode, DomainException } from '@common/exception';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 
 describe('UserDomainService', () => {
   let userDomainService: UserDomainService;
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockBalanceLogRepository: jest.Mocked<IUserBalanceChangeLogRepository>;
+  let mockPrismaService: jest.Mocked<PrismaService>;
 
   beforeEach(() => {
     // Mock Repository 생성
@@ -34,9 +32,14 @@ describe('UserDomainService', () => {
       create: jest.fn(),
     } as any;
 
+    mockPrismaService = {
+      $transaction: jest.fn((fn) => fn()),
+    } as any;
+
     userDomainService = new UserDomainService(
       mockUserRepository,
       mockBalanceLogRepository,
+      mockPrismaService,
     );
   });
 
@@ -70,51 +73,17 @@ describe('UserDomainService', () => {
       try {
         await userDomainService.getUser(userId);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
-          ErrorCode.USER_NOT_FOUND,
-        );
-      }
-
-      expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
-    });
-  });
-
-  describe('getUserBalance', () => {
-    it('사용자의 잔액을 조회한다', async () => {
-      // given
-      const userId = 1;
-      const user = new User(userId, 50000);
-      mockUserRepository.findById.mockResolvedValue(user);
-
-      // when
-      const balance = await userDomainService.getUserBalance(userId);
-
-      // then
-      expect(balance).toBe(50000);
-      expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
-    });
-
-    it('존재하지 않는 사용자의 잔액 조회 시 USER_NOT_FOUND 예외를 던진다', async () => {
-      // given
-      const userId = 999;
-      mockUserRepository.findById.mockResolvedValue(null);
-
-      // when & then
-      await expect(userDomainService.getUserBalance(userId)).rejects.toThrow();
-
-      try {
-        await userDomainService.getUserBalance(userId);
-      } catch (error) {
         expect(error).toBeInstanceOf(DomainException);
         expect((error as DomainException).errorCode).toBe(
           ErrorCode.USER_NOT_FOUND,
         );
       }
+
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
     });
   });
 
-  describe('chargeUser', () => {
+  describe('chargeBalance', () => {
     it('사용자 잔액을 충전하고 로그를 저장한다', async () => {
       // given
       const userId = 1;
@@ -126,7 +95,10 @@ describe('UserDomainService', () => {
       mockBalanceLogRepository.create.mockResolvedValue({} as any);
 
       // when
-      const result = await userDomainService.chargeUser(userId, chargeAmount);
+      const result = await userDomainService.chargeBalance(
+        userId,
+        chargeAmount,
+      );
 
       // then
       expect(result.balance).toBe(15000); // 10000 + 5000
@@ -154,7 +126,7 @@ describe('UserDomainService', () => {
       mockBalanceLogRepository.create.mockResolvedValue({} as any);
 
       // when
-      await userDomainService.chargeUser(userId, chargeAmount, refId, note);
+      await userDomainService.chargeBalance(userId, chargeAmount, refId, note);
 
       // then
       const logCall = mockBalanceLogRepository.create.mock.calls[0][0];
@@ -163,7 +135,7 @@ describe('UserDomainService', () => {
     });
   });
 
-  describe('deductUser', () => {
+  describe('deductBalance', () => {
     it('사용자 잔액을 차감하고 로그를 저장한다', async () => {
       // given
       const userId = 1;
@@ -175,7 +147,10 @@ describe('UserDomainService', () => {
       mockBalanceLogRepository.create.mockResolvedValue({} as any);
 
       // when
-      const result = await userDomainService.deductUser(userId, deductAmount);
+      const result = await userDomainService.deductBalance(
+        userId,
+        deductAmount,
+      );
 
       // then
       expect(result.balance).toBe(7000); // 10000 - 3000
@@ -203,7 +178,7 @@ describe('UserDomainService', () => {
       mockBalanceLogRepository.create.mockResolvedValue({} as any);
 
       // when
-      await userDomainService.deductUser(userId, deductAmount, refId, note);
+      await userDomainService.deductBalance(userId, deductAmount, refId, note);
 
       // then
       const logCall = mockBalanceLogRepository.create.mock.calls[0][0];
@@ -212,7 +187,7 @@ describe('UserDomainService', () => {
     });
   });
 
-  describe('getUserBalanceChangeLogs', () => {
+  describe('getBalanceChangeLogs', () => {
     it('사용자의 잔액 변경 이력을 조회한다', async () => {
       // given
       const userId = 1;
@@ -241,7 +216,7 @@ describe('UserDomainService', () => {
       mockBalanceLogRepository.findByUserId.mockResolvedValue(logs);
 
       // when
-      const result = await userDomainService.getUserBalanceChangeLogs(userId);
+      const result = await userDomainService.getBalanceChangeLogs(userId);
 
       // then
       expect(result.logs).toEqual(logs);
@@ -259,7 +234,7 @@ describe('UserDomainService', () => {
       mockBalanceLogRepository.findByUserId.mockResolvedValue([]);
 
       // when
-      const result = await userDomainService.getUserBalanceChangeLogs(userId);
+      const result = await userDomainService.getBalanceChangeLogs(userId);
 
       // then
       expect(result.logs).toEqual([]);
@@ -282,88 +257,6 @@ describe('UserDomainService', () => {
 
       const userCall = mockUserRepository.create.mock.calls[0][0];
       expect(userCall.balance).toBe(0);
-    });
-  });
-
-  describe('createUserBalanceChangeLog', () => {
-    it('잔액 변경 이력을 생성한다', async () => {
-      // given
-      const userId = 1;
-      const beforeAmount = 10000;
-      const amount = 5000;
-      const code = BalanceChangeCode.SYSTEM_CHARGE;
-      const note = '테스트 충전';
-      const refId = 100;
-
-      const createdLog = new UserBalanceChangeLog(
-        1,
-        userId,
-        amount,
-        beforeAmount,
-        15000,
-        code,
-        note,
-        refId,
-      );
-      mockBalanceLogRepository.create.mockResolvedValue(createdLog);
-
-      // when
-      const result = await userDomainService.createUserBalanceChangeLog(
-        userId,
-        beforeAmount,
-        amount,
-        code,
-        note,
-        refId,
-      );
-
-      // then
-      expect(result).toBe(createdLog);
-      expect(mockBalanceLogRepository.create).toHaveBeenCalled();
-
-      const logCall = mockBalanceLogRepository.create.mock.calls[0][0];
-      expect(logCall.userId).toBe(userId);
-      expect(logCall.amount).toBe(amount);
-      expect(logCall.beforeAmount).toBe(beforeAmount);
-      expect(logCall.afterAmount).toBe(15000); // 10000 + 5000
-      expect(logCall.code).toBe(code);
-      expect(logCall.note).toBe(note);
-      expect(logCall.refId).toBe(refId);
-    });
-
-    it('note와 refId 없이 잔액 변경 이력을 생성할 수 있다', async () => {
-      // given
-      const userId = 1;
-      const beforeAmount = 10000;
-      const amount = 5000;
-      const code = BalanceChangeCode.SYSTEM_CHARGE;
-
-      const createdLog = new UserBalanceChangeLog(
-        1,
-        userId,
-        amount,
-        beforeAmount,
-        15000,
-        code,
-        null,
-        null,
-      );
-      mockBalanceLogRepository.create.mockResolvedValue(createdLog);
-
-      // when
-      const result = await userDomainService.createUserBalanceChangeLog(
-        userId,
-        beforeAmount,
-        amount,
-        code,
-      );
-
-      // then
-      expect(result).toBe(createdLog);
-
-      const logCall = mockBalanceLogRepository.create.mock.calls[0][0];
-      expect(logCall.note).toBeNull();
-      expect(logCall.refId).toBeNull();
     });
   });
 });

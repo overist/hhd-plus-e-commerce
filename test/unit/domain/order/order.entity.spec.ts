@@ -1,10 +1,6 @@
-import { Order } from '@domain/order/order.entity';
-import { OrderStatus } from '@domain/order/order-status.vo';
-import { ErrorCode } from '@domain/common/constants/error-code';
-import {
-  DomainException,
-  ValidationException,
-} from '@domain/common/exceptions/domain.exception';
+import { Order } from '@/order/domain/entities/order.entity';
+import { OrderStatus } from '@/order/domain/entities/order-status.vo';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('Order Entity', () => {
   describe('생성자', () => {
@@ -90,8 +86,8 @@ describe('Order Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_AMOUNT,
         );
       }
@@ -187,8 +183,8 @@ describe('Order Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ARGUMENT,
         );
       }
@@ -470,8 +466,8 @@ describe('Order Entity', () => {
       try {
         order.applyCoupon(5, invalidDiscountAmount);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_AMOUNT,
         );
       }
