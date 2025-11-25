@@ -1,8 +1,4 @@
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 import { OrderStatus } from './order-status.vo';
 
 /**
@@ -29,22 +25,22 @@ export class Order {
 
   private validateAmounts(): void {
     if (this.totalAmount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     if (this.discountAmount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     if (this.finalAmount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     if (this.totalAmount - this.discountAmount !== this.finalAmount) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
   }
 
   private validateExpiredAt(): void {
     if (this.expiredAt <= this.createdAt) {
-      throw new ValidationException(ErrorCode.INVALID_ARGUMENT);
+      throw new DomainException(ErrorCode.INVALID_ARGUMENT);
     }
   }
 
@@ -101,10 +97,10 @@ export class Order {
    */
   applyCoupon(couponId: number, discountAmount: number): void {
     if (discountAmount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     if (discountAmount > this.totalAmount) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
 
     this.couponId = couponId;

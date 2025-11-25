@@ -1,9 +1,5 @@
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('ProductOption Entity', () => {
   describe('생성자', () => {
@@ -72,8 +68,8 @@ describe('ProductOption Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -110,8 +106,8 @@ describe('ProductOption Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -149,8 +145,8 @@ describe('ProductOption Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -261,8 +257,8 @@ describe('ProductOption Entity', () => {
       try {
         productOption.reserveStock(reserveQuantity);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -312,8 +308,8 @@ describe('ProductOption Entity', () => {
       try {
         productOption.decreaseStock(quantity);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -365,8 +361,8 @@ describe('ProductOption Entity', () => {
       try {
         productOption.releaseReservedStock(releaseQuantity);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -416,8 +412,8 @@ describe('ProductOption Entity', () => {
       try {
         productOption.adjustStock(newStock);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }
@@ -443,8 +439,8 @@ describe('ProductOption Entity', () => {
       try {
         productOption.adjustStock(newStock);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_STOCK_QUANTITY,
         );
       }

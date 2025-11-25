@@ -7,7 +7,7 @@ import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
 import { OrderStatus } from '../entities/order-status.vo';
 import { OrderItemData } from '../entities/order.types';
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * OrderDomainService
@@ -99,7 +99,7 @@ export class OrderDomainService {
   async getOrder(orderId: number): Promise<Order> {
     const order = await this.orderRepository.findById(orderId);
     if (!order) {
-      throw new ValidationException(ErrorCode.ORDER_NOT_FOUND);
+      throw new DomainException(ErrorCode.ORDER_NOT_FOUND);
     }
     return order;
   }

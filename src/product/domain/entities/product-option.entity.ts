@@ -1,4 +1,4 @@
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * ProductOption Entity
@@ -32,10 +32,10 @@ export class ProductOption {
    */
   private validateStock(): void {
     if (this.stock < 0 || this.reservedStock < 0) {
-      throw new ValidationException(ErrorCode.INVALID_STOCK_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_STOCK_QUANTITY);
     }
     if (this.reservedStock > this.stock) {
-      throw new ValidationException(ErrorCode.INVALID_STOCK_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_STOCK_QUANTITY);
     }
   }
 

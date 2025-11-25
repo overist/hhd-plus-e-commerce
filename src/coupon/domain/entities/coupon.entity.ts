@@ -1,8 +1,4 @@
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * Coupon Entity
@@ -28,7 +24,7 @@ export class Coupon {
    */
   private validateDiscountRate(): void {
     if (this.discountRate <= 0 || this.discountRate > 100) {
-      throw new ValidationException(ErrorCode.INVALID_DISCOUNT_RATE);
+      throw new DomainException(ErrorCode.INVALID_DISCOUNT_RATE);
     }
   }
 
@@ -37,13 +33,13 @@ export class Coupon {
    */
   private validateQuantity(): void {
     if (this.totalQuantity < 0) {
-      throw new ValidationException(ErrorCode.INVALID_ISSUE_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_ISSUE_QUANTITY);
     }
     if (this.issuedQuantity < 0) {
-      throw new ValidationException(ErrorCode.INVALID_ISSUE_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_ISSUE_QUANTITY);
     }
     if (this.issuedQuantity > this.totalQuantity) {
-      throw new ValidationException(ErrorCode.INVALID_ISSUE_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_ISSUE_QUANTITY);
     }
   }
 
@@ -91,7 +87,7 @@ export class Coupon {
    */
   calculateDiscount(amount: number): number {
     if (amount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_DISCOUNT_RATE);
+      throw new DomainException(ErrorCode.INVALID_DISCOUNT_RATE);
     }
 
     const discountAmount = (amount * this.discountRate) / 100; // TODO 넘버링 정책

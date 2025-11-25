@@ -1,4 +1,4 @@
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * Product Entity
@@ -22,7 +22,7 @@ export class Product {
    */
   private validatePrice(): void {
     if (this.price < 0) {
-      throw new ValidationException(ErrorCode.INVALID_PRICE);
+      throw new DomainException(ErrorCode.INVALID_PRICE);
     }
   }
 
@@ -32,7 +32,7 @@ export class Product {
    */
   validateAvailability(): void {
     if (!this.isAvailable) {
-      throw new ValidationException(ErrorCode.PRODUCT_UNAVAILABLE);
+      throw new DomainException(ErrorCode.PRODUCT_UNAVAILABLE);
     }
   }
 

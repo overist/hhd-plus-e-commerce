@@ -1,9 +1,5 @@
 import { CartItem } from '@/cart/domain/entities/cart-item.entity';
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('CartItem Entity', () => {
   describe('생성자', () => {
@@ -48,8 +44,8 @@ describe('CartItem Entity', () => {
       try {
         new CartItem(1, 100, 200, invalidQuantity, new Date(), new Date());
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_QUANTITY,
         );
       }
@@ -68,8 +64,8 @@ describe('CartItem Entity', () => {
       try {
         new CartItem(1, 100, 200, invalidQuantity, new Date(), new Date());
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_QUANTITY,
         );
       }
@@ -88,8 +84,8 @@ describe('CartItem Entity', () => {
       try {
         new CartItem(1, 100, 200, invalidQuantity, new Date(), new Date());
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_QUANTITY,
         );
       }
@@ -149,8 +145,8 @@ describe('CartItem Entity', () => {
       const cartItem = new CartItem(1, 100, 200, 5, new Date(), new Date());
 
       // when & then
-      expect(() => cartItem.increaseQuantity(0)).toThrow(ValidationException);
-      expect(() => cartItem.increaseQuantity(-1)).toThrow(ValidationException);
+      expect(() => cartItem.increaseQuantity(0)).toThrow(DomainException);
+      expect(() => cartItem.increaseQuantity(-1)).toThrow(DomainException);
     });
   });
 
@@ -182,7 +178,7 @@ describe('CartItem Entity', () => {
       const cartItem = new CartItem(1, 100, 200, 2, new Date(), new Date());
 
       // when & then
-      expect(() => cartItem.decreaseQuantity(5)).toThrow(ValidationException);
+      expect(() => cartItem.decreaseQuantity(5)).toThrow(DomainException);
     });
   });
 

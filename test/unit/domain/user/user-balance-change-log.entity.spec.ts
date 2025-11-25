@@ -2,7 +2,7 @@ import {
   UserBalanceChangeLog,
   BalanceChangeCode,
 } from '@/user/domain/entities/user-balance-change-log.entity';
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('UserBalanceChangeLog Entity', () => {
   describe('생성자', () => {
@@ -115,8 +115,8 @@ describe('UserBalanceChangeLog Entity', () => {
           null,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_AMOUNT,
         );
       }
@@ -153,8 +153,8 @@ describe('UserBalanceChangeLog Entity', () => {
           null,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_AMOUNT,
         );
       }
@@ -191,8 +191,8 @@ describe('UserBalanceChangeLog Entity', () => {
           null,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_AMOUNT,
         );
       }
@@ -231,8 +231,8 @@ describe('UserBalanceChangeLog Entity', () => {
           null,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.USER_LOG_INVALID_CALCULATION,
         );
       }

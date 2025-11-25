@@ -1,9 +1,5 @@
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('Coupon Entity', () => {
   describe('생성자', () => {
@@ -72,8 +68,8 @@ describe('Coupon Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_DISCOUNT_RATE,
         );
       }
@@ -110,8 +106,8 @@ describe('Coupon Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_DISCOUNT_RATE,
         );
       }
@@ -148,8 +144,8 @@ describe('Coupon Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ISSUE_QUANTITY,
         );
       }
@@ -186,8 +182,8 @@ describe('Coupon Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ISSUE_QUANTITY,
         );
       }
@@ -225,8 +221,8 @@ describe('Coupon Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ISSUE_QUANTITY,
         );
       }
@@ -479,8 +475,8 @@ describe('Coupon Entity', () => {
       try {
         coupon.calculateDiscount(invalidAmount);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_DISCOUNT_RATE,
         );
       }

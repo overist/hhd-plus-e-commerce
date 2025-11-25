@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CartDomainService } from '@/cart/domain/services/cart.service';
 import { ProductDomainService } from '@/product/domain/services/product.service';
-import { ValidationException, ErrorCode } from '@common/exception';
+import { ApplicationException, ErrorCode } from '@common/exception';
 import { AddCartCommand, AddCartResult } from './dto/add-cart.dto';
 
 @Injectable()
@@ -27,7 +27,7 @@ export class AddCartUseCase {
     );
 
     if (option.availableStock < newRequestedQuantity) {
-      throw new ValidationException(ErrorCode.INSUFFICIENT_STOCK);
+      throw new ApplicationException(ErrorCode.INSUFFICIENT_STOCK);
     }
 
     await this.cartService.addOrIncreaseQuantity(

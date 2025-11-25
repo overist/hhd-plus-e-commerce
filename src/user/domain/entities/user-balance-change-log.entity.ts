@@ -1,4 +1,4 @@
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * UserBalanceChangeLog Entity
@@ -22,14 +22,14 @@ export class UserBalanceChangeLog {
   private validate(): void {
     // BR-021: amount는 0이 될 수 없음
     if (this.amount === 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     if (this.beforeAmount < 0 || this.afterAmount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     // BR-022: after_amount = before_amount + amount
     if (this.afterAmount !== this.beforeAmount + this.amount) {
-      throw new ValidationException(ErrorCode.USER_LOG_INVALID_CALCULATION);
+      throw new DomainException(ErrorCode.USER_LOG_INVALID_CALCULATION);
     }
   }
 }

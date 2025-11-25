@@ -61,7 +61,7 @@ describe('OrderStatus', () => {
       expect(status).toBe(OrderStatus.PENDING);
     });
 
-    it('given: 유효하지 않은 상태 문자열이 주어짐 / when: from 메서드를 호출함 / then: ValidationException을 발생시킴', () => {
+    it('given: 유효하지 않은 상태 문자열이 주어짐 / when: from 메서드를 호출함 / then: DomainException을 발생시킴', () => {
       // given
       const value = 'INVALID';
 
@@ -70,7 +70,7 @@ describe('OrderStatus', () => {
         OrderStatus.from(value);
         fail('예외가 발생해야 합니다');
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
+        expect(error.name).toBe('DomainException');
       }
     });
   });

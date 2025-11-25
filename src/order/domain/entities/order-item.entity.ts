@@ -1,4 +1,4 @@
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * OrderItem Entity
@@ -22,22 +22,22 @@ export class OrderItem {
 
   private validatePrice(): void {
     if (this.price < 0) {
-      throw new ValidationException(ErrorCode.INVALID_PRICE);
+      throw new DomainException(ErrorCode.INVALID_PRICE);
     }
   }
 
   private validateQuantity(): void {
     if (!Number.isInteger(this.quantity) || this.quantity <= 0) {
-      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_QUANTITY);
     }
   }
 
   private validateSubtotal(): void {
     if (this.subtotal < 0) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
     if (this.price * this.quantity !== this.subtotal) {
-      throw new ValidationException(ErrorCode.INVALID_AMOUNT);
+      throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }
   }
 }

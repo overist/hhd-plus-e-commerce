@@ -1,5 +1,5 @@
 import { Product } from '@/product/domain/entities/product.entity';
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('Product Entity', () => {
   describe('생성자', () => {
@@ -68,8 +68,8 @@ describe('Product Entity', () => {
           new Date(),
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_PRICE,
         );
       }
@@ -133,8 +133,8 @@ describe('Product Entity', () => {
       try {
         product.validateAvailability();
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_UNAVAILABLE,
         );
       }

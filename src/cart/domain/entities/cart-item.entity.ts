@@ -1,8 +1,4 @@
-import {
-  ErrorCode,
-  DomainException,
-  ValidationException,
-} from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 /**
  * CartItem Entity
@@ -25,7 +21,7 @@ export class CartItem {
    */
   private validateQuantity(): void {
     if (!Number.isInteger(this.quantity) || this.quantity <= 0) {
-      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_QUANTITY);
     }
   }
 
@@ -44,7 +40,7 @@ export class CartItem {
    */
   increaseQuantity(amount: number): void {
     if (amount <= 0) {
-      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_QUANTITY);
     }
     this.quantity += amount;
     this.updatedAt = new Date();
@@ -55,10 +51,10 @@ export class CartItem {
    */
   decreaseQuantity(amount: number = 1): void {
     if (amount <= 0) {
-      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_QUANTITY);
     }
     if (this.quantity - amount < 0) {
-      throw new ValidationException(ErrorCode.INVALID_QUANTITY);
+      throw new DomainException(ErrorCode.INVALID_QUANTITY);
     }
     this.quantity -= amount;
     this.updatedAt = new Date();

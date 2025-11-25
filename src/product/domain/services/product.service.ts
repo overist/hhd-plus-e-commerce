@@ -7,7 +7,7 @@ import {
 import { Product } from '../entities/product.entity';
 import { ProductOption } from '../entities/product-option.entity';
 import { ProductPopularitySnapshot } from '../entities/product-popularity-snapshot.entity';
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 import { OrderItemData } from '@/order/domain/entities/order.types';
 
 /**
@@ -36,7 +36,7 @@ export class ProductDomainService {
   async getProduct(productId: number): Promise<Product> {
     const product = await this.productRepository.findById(productId);
     if (!product) {
-      throw new ValidationException(ErrorCode.PRODUCT_NOT_FOUND);
+      throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND);
     }
     return product;
   }
@@ -68,7 +68,7 @@ export class ProductDomainService {
   async getProductOption(productOptionId: number): Promise<ProductOption> {
     const option = await this.productOptionRepository.findById(productOptionId);
     if (!option) {
-      throw new ValidationException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
     }
     return option;
   }
@@ -92,7 +92,7 @@ export class ProductDomainService {
    */
   async getTopProducts(count: number): Promise<ProductPopularitySnapshot[]> {
     if (count <= 0) {
-      throw new ValidationException(ErrorCode.INVALID_ARGUMENT);
+      throw new DomainException(ErrorCode.INVALID_ARGUMENT);
     }
 
     return this.productPopularitySnapshotRepository.findTop(count);
@@ -109,18 +109,18 @@ export class ProductDomainService {
   ): Promise<void> {
     const option = await this.productOptionRepository.findById(productOptionId);
     if (!option) {
-      throw new ValidationException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
     }
 
     if (operation === 'decrease') {
       if (option.stock < quantity) {
-        throw new ValidationException(ErrorCode.INSUFFICIENT_STOCK);
+        throw new DomainException(ErrorCode.INSUFFICIENT_STOCK);
       }
       option.adjustStock(option.stock - quantity);
     } else if (operation === 'increase') {
       option.adjustStock(option.stock + quantity);
     } else {
-      throw new ValidationException(ErrorCode.INVALID_ARGUMENT);
+      throw new DomainException(ErrorCode.INVALID_ARGUMENT);
     }
 
     await this.productOptionRepository.update(option); // save
@@ -161,7 +161,7 @@ export class ProductDomainService {
   ): Promise<void> {
     const option = await this.productOptionRepository.findById(productOptionId);
     if (!option) {
-      throw new ValidationException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
     }
 
     option.decreaseStock(quantity);
@@ -178,7 +178,7 @@ export class ProductDomainService {
   ): Promise<void> {
     const option = await this.productOptionRepository.findById(productOptionId);
     if (!option) {
-      throw new ValidationException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
     }
 
     option.restoreStock(quantity);

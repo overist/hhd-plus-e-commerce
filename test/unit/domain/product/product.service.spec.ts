@@ -7,7 +7,7 @@ import {
   IProductOptionRepository,
   IProductPopularitySnapshotRepository,
 } from '@/product/domain/interfaces/product.repository.interface';
-import { ErrorCode, ValidationException } from '@common/exception';
+import { ErrorCode, DomainException } from '@common/exception';
 
 describe('ProductDomainService', () => {
   let productDomainService: ProductDomainService;
@@ -168,8 +168,8 @@ describe('ProductDomainService', () => {
       try {
         await productDomainService.getProduct(productId);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_NOT_FOUND,
         );
       }
@@ -271,8 +271,8 @@ describe('ProductDomainService', () => {
       try {
         await productDomainService.getProductOption(productOptionId);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_OPTION_NOT_FOUND,
         );
       }
@@ -337,8 +337,8 @@ describe('ProductDomainService', () => {
       try {
         await productDomainService.getTopProducts(invalidCount);
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ARGUMENT,
         );
       }
@@ -427,8 +427,8 @@ describe('ProductDomainService', () => {
           10,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.PRODUCT_OPTION_NOT_FOUND,
         );
       }
@@ -467,8 +467,8 @@ describe('ProductDomainService', () => {
           60,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INSUFFICIENT_STOCK,
         );
       }
@@ -507,8 +507,8 @@ describe('ProductDomainService', () => {
           10,
         );
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
-        expect((error as ValidationException).errorCode).toBe(
+        expect(error.name).toBe('DomainException');
+        expect((error as DomainException).errorCode).toBe(
           ErrorCode.INVALID_ARGUMENT,
         );
       }

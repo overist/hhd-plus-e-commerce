@@ -225,7 +225,7 @@ describe('OrderDomainService', () => {
       expect(orderRepository.findById).toHaveBeenCalledWith(orderId);
     });
 
-    it('given: 존재하지 않는 주문 ID가 주어짐 / when: getOrder 메서드를 호출함 / then: ValidationException을 발생시킴', async () => {
+    it('given: 존재하지 않는 주문 ID가 주어짐 / when: getOrder 메서드를 호출함 / then: DomainException을 발생시킴', async () => {
       // given
       const orderId = 999;
       orderRepository.findById.mockResolvedValue(null);
@@ -235,7 +235,7 @@ describe('OrderDomainService', () => {
         await service.getOrder(orderId);
         fail('예외가 발생해야 합니다');
       } catch (error) {
-        expect(error.name).toBe('ValidationException');
+        expect(error.name).toBe('DomainException');
         expect(error.errorCode).toBe(ErrorCode.ORDER_NOT_FOUND);
       }
     });
