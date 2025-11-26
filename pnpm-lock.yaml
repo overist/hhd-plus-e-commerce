@@ -44,6 +44,9 @@ importers:
       connect-redis:
         specifier: ^9.0.0
         version: 9.0.0(express-session@1.18.2)(redis@5.10.0)
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
       express-session:
         specifier: ^1.18.2
         version: 1.18.2
