@@ -42,8 +42,10 @@
     "class-validator": "^0.14.1",
     "connect-redis": "^9.0.0",
     "express-session": "^1.18.2",
+    "ioredis": "^5.8.2",
     "raw-body": "^2.5.2",
     "redis": "^5.10.0",
+    "redlock": "5.0.0-beta.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
