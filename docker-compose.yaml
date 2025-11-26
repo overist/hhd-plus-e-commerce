@@ -23,7 +23,7 @@ services:
       - --host-cache-size=0
 
   hhplus-redis:
-    image: redis:7.0
+    image: redis:8.4.0
     restart: unless-stopped
     container_name: hhplus-redis
     ports:

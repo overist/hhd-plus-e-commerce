@@ -1,16 +1,21 @@
 import { MySqlContainer, StartedMySqlContainer } from '@testcontainers/mysql';
+import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
+import { RedisService } from '@common/redis-manager/redis.service';
+import { createClient } from 'redis';
 
 let mysqlContainer: StartedMySqlContainer;
+let redisContainer: StartedRedisContainer;
 let prismaService: PrismaService;
+let redisService: RedisService;
 
 /**
  * 모든 통합 테스트 시작 전 한 번만 실행
  * MySQL 컨테이너를 시작하고 Prisma 마이그레이션 실행
  */
-export async function setupIntegrationTest(): Promise<PrismaService> {
+export async function setupDatabaseTest(): Promise<PrismaService> {
   if (!mysqlContainer) {
     // MySQL 컨테이너 시작
     mysqlContainer = await new MySqlContainer('mysql:8.0')
@@ -70,6 +75,36 @@ export async function setupIntegrationTest(): Promise<PrismaService> {
 }
 
 /**
+ * Redis 컨테이너를 시작하고 RedisService를 반환
+ */
+export async function setupRedisForTest(): Promise<RedisService> {
+  if (!redisContainer) {
+    // Redis 컨테이너 시작
+    redisContainer = await new RedisContainer('redis:8.4.0').start();
+
+    const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getPort()}`;
+    process.env.REDIS_URL = redisUrl;
+
+    // RedisService 인스턴스 생성 및 클라이언트 주입
+    redisService = new RedisService();
+    const redisClient = createClient({ url: redisUrl });
+    await redisClient.connect();
+    (redisService as any).client = redisClient;
+
+    console.log('✅ Redis 컨테이너 시작 완료');
+  }
+
+  return redisService;
+}
+
+/**
+ * RedisService 인스턴스 반환
+ */
+export function getRedisService(): RedisService {
+  return redisService;
+}
+
+/**
  * 각 테스트 후 데이터 정리
  */
 export async function cleanupDatabase(prisma: PrismaService): Promise<void> {
@@ -110,8 +145,20 @@ export async function teardownIntegrationTest(): Promise<void> {
     await prismaService.$disconnect();
   }
 
+  if (redisService) {
+    const client = redisService.getClient();
+    if (client) {
+      await client.quit();
+    }
+  }
+
   if (mysqlContainer) {
     await mysqlContainer.stop();
     console.log('✅ MySQL 컨테이너 종료 완료');
+  }
+
+  if (redisContainer) {
+    await redisContainer.stop();
+    console.log('✅ Redis 컨테이너 종료 완료');
   }
 }

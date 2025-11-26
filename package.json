@@ -43,7 +43,7 @@
     "connect-redis": "^9.0.0",
     "express-session": "^1.18.2",
     "raw-body": "^2.5.2",
-    "redis": "^5.9.0",
+    "redis": "^5.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -54,6 +54,7 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.8",
     "@testcontainers/mysql": "^11.8.1",
+    "@testcontainers/redis": "^11.8.1",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
