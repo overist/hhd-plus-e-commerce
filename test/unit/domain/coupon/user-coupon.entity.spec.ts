@@ -64,64 +64,6 @@ describe('UserCoupon Entity', () => {
       expect(userCoupon.usedAt).toBeNull();
       expect(userCoupon.expiredAt).toBe(coupon.expiredAt);
     });
-
-    it('만료된 쿠폰을 발급하려 하면 EXPIRED_COUPON 예외를 던진다', () => {
-      // given
-      const userId = 100;
-      const expiredCoupon = new Coupon(
-        1,
-        '만료 쿠폰',
-        10,
-        100,
-        50,
-        new Date('2020-01-01'),
-        new Date(),
-        new Date(),
-      );
-
-      // when & then
-      expect(() => UserCoupon.issue(userId, expiredCoupon)).toThrow(
-        DomainException,
-      );
-
-      try {
-        UserCoupon.issue(userId, expiredCoupon);
-      } catch (error) {
-        expect(error).toBeInstanceOf(DomainException);
-        expect((error as DomainException).errorCode).toBe(
-          ErrorCode.EXPIRED_COUPON,
-        );
-      }
-    });
-
-    it('품절된 쿠폰을 발급하려 하면 COUPON_SOLD_OUT 예외를 던진다', () => {
-      // given
-      const userId = 100;
-      const soldOutCoupon = new Coupon(
-        1,
-        '품절 쿠폰',
-        10,
-        100,
-        100,
-        new Date('2025-12-31'),
-        new Date(),
-        new Date(),
-      );
-
-      // when & then
-      expect(() => UserCoupon.issue(userId, soldOutCoupon)).toThrow(
-        DomainException,
-      );
-
-      try {
-        UserCoupon.issue(userId, soldOutCoupon);
-      } catch (error) {
-        expect(error).toBeInstanceOf(DomainException);
-        expect((error as DomainException).errorCode).toBe(
-          ErrorCode.COUPON_SOLD_OUT,
-        );
-      }
-    });
   });
 
   describe('canUse', () => {

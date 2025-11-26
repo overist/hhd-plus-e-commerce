@@ -22,13 +22,6 @@ export class UserCoupon {
    * BR-006: 하나의 쿠폰은 사용자당 1회만 발급 가능하다
    */
   static issue(userId: number, coupon: Coupon): UserCoupon {
-    if (!coupon.canIssue()) {
-      if (coupon.isExpired()) {
-        throw new DomainException(ErrorCode.EXPIRED_COUPON);
-      }
-      throw new DomainException(ErrorCode.COUPON_SOLD_OUT);
-    }
-
     return new UserCoupon(
       0, // DB에서 생성
       userId,

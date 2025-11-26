@@ -48,14 +48,15 @@ export class Coupon {
    * BR-006: 발급된 쿠폰은 지정된 만료일까지만 사용 가능하다
    * NFR-010: 쿠폰 발급 수량은 정확하게 관리되어야 한다 (Over-issue 방지)
    */
-  canIssue(): boolean {
+  validateIssuable(): void {
     // 만료일 확인
     if (this.isExpired()) {
-      return false;
+      throw new DomainException(ErrorCode.EXPIRED_COUPON);
     }
-
-    // 발급 가능 수량 확인
-    return this.issuedQuantity < this.totalQuantity;
+    // 발급 가능 수량 확인 (1매 씩 발급)
+    if (this.issuedQuantity >= this.totalQuantity) {
+      throw new DomainException(ErrorCode.COUPON_SOLD_OUT);
+    }
   }
 
   /**
@@ -70,12 +71,7 @@ export class Coupon {
    * NFR-006: 동시에 같은 쿠폰을 발급받는 경우 수량 정합성을 보장해야 한다
    */
   issue(): void {
-    if (!this.canIssue()) {
-      if (this.isExpired()) {
-        throw new DomainException(ErrorCode.EXPIRED_COUPON);
-      }
-      throw new DomainException(ErrorCode.COUPON_SOLD_OUT);
-    }
+    this.validateIssuable();
 
     this.issuedQuantity += 1;
     this.updatedAt = new Date();

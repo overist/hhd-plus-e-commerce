@@ -229,8 +229,8 @@ describe('Coupon Entity', () => {
     });
   });
 
-  describe('canIssue', () => {
-    it('발급 가능한 쿠폰은 true를 반환한다', () => {
+  describe('validateIssuable', () => {
+    it('발급 가능한 쿠폰은 예외를 던지지 않는다', () => {
       // given
       const coupon = new Coupon(
         1,
@@ -243,14 +243,11 @@ describe('Coupon Entity', () => {
         new Date(),
       );
 
-      // when
-      const result = coupon.canIssue();
-
-      // then
-      expect(result).toBe(true);
+      // when & then
+      expect(() => coupon.validateIssuable()).not.toThrow();
     });
 
-    it('만료된 쿠폰은 false를 반환한다', () => {
+    it('만료된 쿠폰은 EXPIRED_COUPON 예외를 던진다', () => {
       // given
       const expiredDate = new Date('2020-01-01');
       const coupon = new Coupon(
@@ -264,14 +261,20 @@ describe('Coupon Entity', () => {
         new Date(),
       );
 
-      // when
-      const result = coupon.canIssue();
+      // when & then
+      expect(() => coupon.validateIssuable()).toThrow(DomainException);
 
-      // then
-      expect(result).toBe(false);
+      try {
+        coupon.validateIssuable();
+      } catch (error) {
+        expect(error).toBeInstanceOf(DomainException);
+        expect((error as DomainException).errorCode).toBe(
+          ErrorCode.EXPIRED_COUPON,
+        );
+      }
     });
 
-    it('발급 수량이 다 찬 쿠폰은 false를 반환한다', () => {
+    it('발급 수량이 다 찬 쿠폰은 COUPON_SOLD_OUT 예외를 던진다', () => {
       // given
       const coupon = new Coupon(
         1,
@@ -284,11 +287,17 @@ describe('Coupon Entity', () => {
         new Date(),
       );
 
-      // when
-      const result = coupon.canIssue();
+      // when & then
+      expect(() => coupon.validateIssuable()).toThrow(DomainException);
 
-      // then
-      expect(result).toBe(false);
+      try {
+        coupon.validateIssuable();
+      } catch (error) {
+        expect(error).toBeInstanceOf(DomainException);
+        expect((error as DomainException).errorCode).toBe(
+          ErrorCode.COUPON_SOLD_OUT,
+        );
+      }
     });
   });
 

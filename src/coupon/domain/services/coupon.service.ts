@@ -83,9 +83,7 @@ export class CouponDomainService {
     }
 
     // 쿠폰 발급 가능 여부 확인 (수량 및 만료일)
-    if (!coupon.canIssue()) {
-      throw new DomainException(ErrorCode.COUPON_SOLD_OUT);
-    }
+    coupon.validateIssuable();
 
     // 쿠폰 발급 처리 (도메인 규칙에 따라 쿠폰 수량 차감)
     coupon.issue();
