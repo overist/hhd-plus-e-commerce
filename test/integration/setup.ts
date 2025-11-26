@@ -4,7 +4,6 @@ import { execSync } from 'child_process';
 import * as path from 'path';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { RedisService } from '@common/redis-manager/redis.service';
-import { createClient } from 'redis';
 
 let mysqlContainer: StartedMySqlContainer;
 let redisContainer: StartedRedisContainer;
@@ -85,13 +84,11 @@ export async function setupRedisForTest(): Promise<RedisService> {
     const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getPort()}`;
     process.env.REDIS_URL = redisUrl;
 
-    // RedisService 인스턴스 생성 및 클라이언트 주입
+    // RedisService 인스턴스 생성 및 onModuleInit 호출
     redisService = new RedisService();
-    const redisClient = createClient({ url: redisUrl });
-    await redisClient.connect();
-    (redisService as any).client = redisClient;
+    await redisService.onModuleInit();
 
-    console.log('✅ Redis 컨테이너 시작 완료');
+    console.log('✅ Redis 컨테이너 시작 완료 (ioredis + Redlock)');
   }
 
   return redisService;
@@ -141,15 +138,18 @@ export async function cleanupDatabase(prisma: PrismaService): Promise<void> {
  * 모든 통합 테스트 종료 후 한 번만 실행
  */
 export async function teardownIntegrationTest(): Promise<void> {
-  if (prismaService) {
-    await prismaService.$disconnect();
+  // RedisService를 먼저 정리 (컨테이너 종료 전에 클라이언트 연결 해제)
+  if (redisService) {
+    try {
+      await redisService.onModuleDestroy();
+    } catch {
+      // 이미 연결이 끊어진 경우 무시
+    }
+    redisService = null as any;
   }
 
-  if (redisService) {
-    const client = redisService.getClient();
-    if (client) {
-      await client.quit();
-    }
+  if (prismaService) {
+    await prismaService.$disconnect();
   }
 
   if (mysqlContainer) {
@@ -160,5 +160,6 @@ export async function teardownIntegrationTest(): Promise<void> {
   if (redisContainer) {
     await redisContainer.stop();
     console.log('✅ Redis 컨테이너 종료 완료');
+    redisContainer = null as any;
   }
 }
