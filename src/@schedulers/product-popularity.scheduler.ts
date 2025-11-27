@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { CACHE_KEYS } from '@common/cache-manager/cache.keys';
 import {
   IProductRepository,
   IProductOptionRepository,
@@ -27,6 +29,7 @@ export class ProductPopularityScheduler {
     private readonly productRepository: IProductRepository,
     private readonly productOptionRepository: IProductOptionRepository,
     private readonly productPopularitySnapshotRepository: IProductPopularitySnapshotRepository,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   /**
@@ -181,6 +184,13 @@ export class ProductPopularityScheduler {
           now,
         );
         await this.productPopularitySnapshotRepository.create(snapshot);
+      }
+
+      // 캐시 무효화: 새 스냅샷이 생성되었으므로 기존 캐시 삭제
+      try {
+        await this.cacheManager.del(CACHE_KEYS.PRODUCTS_TOP);
+      } catch (error) {
+        this.logger.error('캐시 무효화 실패 : ', error);
       }
 
       this.logger.log(
