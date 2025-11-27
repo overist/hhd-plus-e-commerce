@@ -6,10 +6,14 @@ import {
   ParseIntPipe,
   Patch,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { HttpCacheInterceptor } from '@common/cache-manager/http-cache.interceptor';
+import { CACHE_KEYS, CACHE_TTL } from '@common/cache-manager/cache.keys';
 import { AdminGuard } from '@common/guards/admin.guard';
 
 // DTOs
@@ -76,6 +80,9 @@ export class ProductController {
    * 최근 3일간 가장 많이 팔린 상위 5개 상품 조회
    */
   @Get('top')
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey(CACHE_KEYS.PRODUCTS_TOP)
+  @CacheTTL(CACHE_TTL.ONE_DAY)
   @ApiOperation({
     summary: '상위 상품 조회',
     description: '최근 3일간 가장 많이 팔린 상위 5개 상품을 조회합니다.',
