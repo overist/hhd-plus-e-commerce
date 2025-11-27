@@ -1,4 +1,15 @@
 /* eslint-disable no-undef */
+/**
+ * Issue Coupon 성능 테스트
+ *
+ * 사용법:
+ *   # 인프라 실행
+ *   pnpm infra:up:stage
+ *
+ *   # 테스트 실행
+ *   k6 run k6/issue-coupon.script.js
+ */
+
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate } from 'k6/metrics';
@@ -16,17 +27,57 @@ const errorCount = new Counter('errors_coupon_issue');
 const souldoutCount = new Counter('coupon_sold_out_count');
 const successRate = new Rate('success_coupon_issue_rate');
 
+// ** 테스트 시나리오 **
+// 환경변수로 시나리오 선택 가능: k6 run -e SCENARIO=spike ...
+const SCENARIO = __ENV.SCENARIO || 'load';
+
+const scenarios = {
+  // 시나리오 1: 기본 부하 테스트 (일정 부하)
+  load: {
+    executor: 'constant-arrival-rate',
+    rate: 100, // 초당 100 요청
+    timeUnit: '1s',
+    duration: '30s',
+    preAllocatedVUs: 50,
+    maxVUs: 200,
+  },
+
+  // 시나리오 2: 스파이크 테스트 (급증하는 트래픽)
+  spike: {
+    executor: 'ramping-arrival-rate',
+    startRate: 10,
+    timeUnit: '1s',
+    preAllocatedVUs: 50,
+    maxVUs: 500,
+    stages: [
+      { duration: '10s', target: 10 }, // 워밍업
+      { duration: '10s', target: 200 }, // 스파이크
+      { duration: '10s', target: 200 }, // 유지
+      { duration: '10s', target: 10 }, // 정상화
+    ],
+  },
+
+  // 시나리오 3: 스트레스 테스트 (점진적 부하 증가)
+  stress: {
+    executor: 'ramping-arrival-rate',
+    startRate: 10,
+    timeUnit: '1s',
+    preAllocatedVUs: 50,
+    maxVUs: 1000,
+    stages: [
+      { duration: '20s', target: 50 },
+      { duration: '20s', target: 100 },
+      { duration: '20s', target: 200 },
+      { duration: '20s', target: 300 },
+      { duration: '20s', target: 50 },
+    ],
+  },
+};
+
 // ANCHOR STEP0: [CONFIG] k6 옵션 설정
 export const options = {
   scenarios: {
-    coupon_spike: {
-      executor: 'constant-arrival-rate',
-      rate: 50, // 초당 요청 수
-      timeUnit: '1s',
-      duration: '5s',
-      preAllocatedVUs: 100, // 미리 할당할 VU 수
-      maxVUs: 100, // 최대 VU 수
-    },
+    issue_coupon: scenarios[SCENARIO],
   },
   summaryTrendStats: ['avg', 'min', 'max', 'p(55)', 'p(90)', 'p(95)', 'p(99)'],
   thresholds: {

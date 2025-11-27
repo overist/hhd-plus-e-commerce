@@ -149,9 +149,6 @@ Redis 부하 확인:
 # 분산 락 Redis 확인
 docker exec scale-redis-lock redis-cli INFO stats | grep -E "(commands|connections)"
 
-# 캐시 Redis 확인
-docker exec scale-redis-cache redis-cli INFO stats | grep -E "(commands|connections)"
-
 # 세션 Redis 확인
 docker exec scale-redis-session redis-cli INFO stats | grep -E "(commands|connections)"
 ```
@@ -199,23 +196,6 @@ k6 run k6/issue-coupon.script.js
 - 정확히 100명만 성공해야 함
 - 나머지는 품절 에러 (errorCode: C001)
 
-### 3. 커스텀 부하 테스트
-
-```bash
-# VU 수와 지속 시간 조정
-k6 run --vus 200 --duration 60s k6/issue-coupon.script.js
-```
-
-### 4. 장시간 안정성 테스트
-
-```bash
-k6 run --vus 50 --duration 10m k6/issue-coupon.script.js
-```
-
-- 메모리 누수 확인
-- Redis 연결 풀 안정성
-- Pub/Sub 채널 구독 누적 여부
-
 ## 예상 결과
 
 ### Pub/Sub 적용 전 (Polling 방식)
@@ -248,55 +228,58 @@ scenarios: (100.00%) 1 scenario, 100 max VUs, 35s max duration
 - 평균 응답 시간 85% 개선
 - `coupon_sold_out_count`: 정상적인 품절 응답 (에러가 아닌 정상 케이스)
 
-## 트러블슈팅
+---
 
-### 컨테이너가 시작되지 않음
+# Top Products 캐시 성능 테스트 가이드
 
-```bash
-docker compose -f docker-compose.stage.yaml logs app
-```
+## 개요
 
-### Redis 연결 실패
+인기 상품 조회 API(`GET /api/products/top`)의 캐시 전략별 성능을 비교 테스트합니다.
 
-```bash
-# 각 Redis 인스턴스 확인
-docker exec scale-redis-session redis-cli ping
-docker exec scale-redis-lock redis-cli ping
-docker exec scale-redis-cache redis-cli ping
-```
+## 테스트 대상
 
-### 세션 문제 (401 Unauthorized)
+| 버전         | 캐시 전략 | 설명                              |
+| ------------ | --------- | --------------------------------- |
+| No Cache     | 없음      | 매 요청마다 DB 조회               |
+| Memory Cache | 인메모리  | `@nestjs/cache-manager` 기본 설정 |
+| Redis Cache  | Redis     | 레디스 저장소 연동                |
 
-K6 테스트에서 401 에러가 발생하면:
+## 테스트 실행 방법
 
-1. **같은 VU 내에서 회원가입과 쿠폰 발급을 순차 실행해야 합니다**
-   - K6의 `setup()` 함수와 `default()` 함수는 별도의 JavaScript 컨텍스트에서 실행됨
-   - `setup()`에서 생성한 세션 쿠키를 VU에서 공유할 수 없음
-2. **현재 스크립트 해결 방식**: 각 VU가 회원가입 → 쿠폰 발급을 순차 실행
-   - 같은 VU 내에서는 쿠키가 자동으로 유지됨 (`jar.cookiesForURL()` 사용)
-
-3. **Nginx 세션 전달 확인**:
+### Step 1: 인프라 실행
 
 ```bash
-curl -v -c cookies.txt -b cookies.txt http://localhost:3000/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@test.com", "password": "1234"}'
+pnpm infra:up
 ```
 
-### K6 스크립트 실행 오류
+### Step 2: 코드 버전 전환 및 앱 실행
 
 ```bash
-# K6가 설치되어 있는지 확인
-k6 version
+# No Cache 버전으로 전환
+git checkout <no-cache-commit>
+pnpm start:dev
 
-# 스크립트 문법 확인
-k6 run --dry-run k6/issue-coupon.script.js
+# 또는 Memory Cache 버전
+git checkout <memory-cache-commit>
+pnpm start:dev
+
+# 또는 Redis Cache 버전
+git checkout <redis-cache-commit>
+pnpm start:dev
 ```
 
-## 모니터링 (선택)
+### Step 3: K6 테스트 실행
 
-Prometheus + Grafana 추가 시 실시간 대시보드 구성 가능:
+```bash
+# 기본 부하 테스트 (30초, 100 req/s)
+k6 run k6/top-products-cache.script.js
 
-- Redis 명령 수/초
-- 앱 인스턴스별 요청 분포
-- Pub/Sub 메시지 처리량
+# 스파이크 테스트
+k6 run -e SCENARIO=spike k6/top-products-cache.script.js
+
+# 스트레스 테스트
+k6 run -e SCENARIO=stress k6/top-products-cache.script.js
+
+# 빠른 스모크 테스트
+k6 run -e SCENARIO=smoke k6/top-products-cache.script.js
+```
