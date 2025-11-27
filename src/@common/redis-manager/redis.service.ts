@@ -9,11 +9,13 @@ import Redis from 'ioredis';
 import Redlock, { ExecutionError } from 'redlock';
 
 /**
- * Redis 서비스
- * 레디스 커넥션은 세션용(main.ts) 1개,
- * cache/lock용(this.client), 1개,
- * lock용 publish/subscribe 2개,
- * 총 4개 클라이언트로 구성
+ * Redis 서비스 (분산 락 전용)
+ * 분산 락을 위한 Redis 클라이언트 관리
+ *
+ * Redis 분리 구조:
+ * - 세션용 Redis (REDIS_SESSION_URL): main.ts에서 express-session과 함께 사용
+ * - 분산락용 Redis (REDIS_LOCK_URL): 이 서비스에서 Redlock과 함께 사용 (client, publisher, subscriber)
+ * - 캐시용 Redis (REDIS_CACHE_URL): cache.module.ts에서 cache-manager와 함께 사용
  */
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -21,7 +23,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly LOCK_KEY_PREFIX = 'lock:';
   private readonly LOCK_CHANNEL_PREFIX = 'lock:release:';
 
-  // Redis 일반 클라이언트(캐싱), RedLock 클라이언트(분산 락)
+  // Redis 분산 락 전용 클라이언트
   private client: Redis;
   private publisher: Redis;
   private subscriber: Redis;
@@ -35,17 +37,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   // 모듈 초기화
   async onModuleInit(): Promise<void> {
-    this.client = new Redis(process.env.REDIS_URL as string);
-    this.client.on('error', (err) => this.logger.error('Redis error', err));
+    const lockRedisUrl = process.env.REDIS_LOCK_URL as string;
 
-    this.publisher = new Redis(process.env.REDIS_URL as string);
-    this.publisher.on('error', (err) =>
-      this.logger.error('Redis publish error', err),
+    this.client = new Redis(lockRedisUrl);
+    this.client.on('error', (err) =>
+      this.logger.error('Redis Lock client error', err),
     );
 
-    this.subscriber = new Redis(process.env.REDIS_URL as string);
+    this.publisher = new Redis(lockRedisUrl);
+    this.publisher.on('error', (err) =>
+      this.logger.error('Redis Lock publish error', err),
+    );
+
+    this.subscriber = new Redis(lockRedisUrl);
     this.subscriber.on('error', (err) =>
-      this.logger.error('Redis subscribe error', err),
+      this.logger.error('Redis Lock subscribe error', err),
     );
     this.subscriber.on('message', (channel) => {
       this.eventEmitter.emit(channel);
