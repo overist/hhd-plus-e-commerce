@@ -7,6 +7,10 @@ NestJS 기반 이커머스 백엔드 시스템
 - **Framework**: NestJS
 - **Database**: MySQL 8.0 (InnoDB, MVCC)
 - **ORM**: Prisma
+- **Cache/Lock**: Redis (3개 분리 구성)
+  - Session: 세션 저장 (express-session)
+  - Lock: 분산 락 (Redlock + Pub/Sub)
+  - Cache: API 응답 캐시 (@nestjs/cache-manager)
 - **Testing**: Jest, Testcontainers
 
 ---
@@ -21,6 +25,8 @@ src/
 │   ├── exception/            # 도메인/검증 예외 필터
 │   ├── guards/               # 인증 가드
 │   ├── mutex-manager/        # 분산 락 관리자
+│   ├── redis-manager/        # Redis 연결 관리
+│   ├── cache-manager/        # API 응답 캐시 관리
 │   └── prisma-manager/       # Prisma 트랜잭션 컨텍스트
 │
 ├── cart/                     # 장바구니 도메인 모듈
@@ -204,12 +210,32 @@ pnpm test -- "balance-charge"
 ### 인프라 실행
 
 ```bash
-# Docker Compose로 MySQL 실행
+# Docker Compose로 MySQL + Redis 3개 실행
 pnpm infra:up
 
 # 인프라 중지
 pnpm infra:down
 ```
+
+### Redis 구성
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Redis 3개 분리 구성                    │
+├─────────────────────────────────────────────────────────┤
+│  :6379  │  Session Redis  │  세션 저장 (express-session)│
+│  :6380  │  Lock Redis     │  분산 락 (Redlock + Pub/Sub)│
+│  :6381  │  Cache Redis    │  API 응답 캐시              │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Scale outed STAGE 인프라 구성
+
+```
+pnpm infra:up:stage
+```
+
+구성 후 k6 부하 테스트 진행 가능
 
 ### Prisma 명령어
 
