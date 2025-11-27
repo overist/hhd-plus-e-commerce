@@ -327,6 +327,10 @@ pnpm prisma:diff-check
 - [Redis 분산 락 타임라인](docs/REDIS_LOCK_TIMELINE.md)
 - [Redis 분산 락 성능 분석](docs/REDIS_LOCK_PERFORMANCE.md)
 - [Redis 분산 락 로그 분석](docs/REDIS_LOCK_LOG_ANALYSIS.md)
+
+### 캐시 & 성능
+
+- [캐시 성능 개선 보고서](docs/CACHE_PERFORMANCE_REPORT.md)
 - [K6 부하 테스트 가이드](k6/README.md)
 
 ### API 문서
