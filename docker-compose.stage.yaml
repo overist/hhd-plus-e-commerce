@@ -34,12 +34,42 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: scale-redis
+  # Redis for Session Storage
+  redis-session:
+    image: redis:8.4.0
+    container_name: scale-redis-session
     restart: unless-stopped
     ports:
       - '6379:6379'
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis for Distributed Lock (Redlock)
+  redis-lock:
+    image: redis:8.4.0
+    container_name: scale-redis-lock
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    command: redis-server --maxmemory 64mb --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis for Cache
+  redis-cache:
+    image: redis:8.4.0
+    container_name: scale-redis-cache
+    restart: unless-stopped
+    ports:
+      - '6381:6379'
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -70,13 +100,19 @@ services:
     environment:
       NODE_ENV: stage
       DATABASE_URL: 'mysql://docker:docker@mysql:3306/ecommerce_db'
-      REDIS_URL: 'redis://redis:6379'
+      REDIS_SESSION_URL: 'redis://redis-session:6379'
+      REDIS_LOCK_URL: 'redis://redis-lock:6379'
+      REDIS_CACHE_URL: 'redis://redis-cache:6379'
       SESSION_SECRET: 'scale-test-secret'
       PORT: 3000
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      redis-session:
+        condition: service_healthy
+      redis-lock:
+        condition: service_healthy
+      redis-cache:
         condition: service_healthy
     # 포트는 nginx가 로드밸런싱하므로 노출하지 않음
     expose:

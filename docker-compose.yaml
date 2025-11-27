@@ -22,11 +22,31 @@ services:
       - --authentication-policy=caching_sha2_password
       - --host-cache-size=0
 
-  hhplus-redis:
+  # Redis for Session Storage
+  hhplus-redis-session:
     image: redis:8.4.0
     restart: unless-stopped
-    container_name: hhplus-redis
+    container_name: hhplus-redis-session
     ports:
       - '6379:6379'
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction
+
+  # Redis for Distributed Lock (Redlock)
+  hhplus-redis-lock:
+    image: redis:8.4.0
+    restart: unless-stopped
+    container_name: hhplus-redis-lock
+    ports:
+      - '6380:6379'
+    command: redis-server --maxmemory 64mb --maxmemory-policy noeviction
+
+  # Redis for Cache
+  hhplus-redis-cache:
+    image: redis:8.4.0
+    restart: unless-stopped
+    container_name: hhplus-redis-cache
+    ports:
+      - '6381:6379'
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
 # volumes:
 #   hhplus_mysql_data:

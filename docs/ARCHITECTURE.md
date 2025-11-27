@@ -19,6 +19,8 @@ src/
 │   ├── exception/            # 도메인/검증 예외 필터
 │   ├── guards/               # 인증 가드
 │   ├── mutex-manager/        # 분산 락 관리자
+│   ├── redis-manager/        # Redis 연결 관리 (Lock Redis)
+│   ├── cache-manager/        # API 응답 캐시 관리 (Cache Redis)
 │   └── prisma-manager/       # Prisma 트랜잭션 컨텍스트
 │
 ├── @schedulers/              # 배치 스케줄러

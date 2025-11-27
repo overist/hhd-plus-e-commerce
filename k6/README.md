@@ -75,7 +75,7 @@ k6 run k6/balance-charge.script.js
                                   │
                                   ▼
                     ┌─────────────────────────┐
-                    │      Redis (Single)     │
+                    │      Redis (Lock)     │
                     │   - Redlock (분산락)    │
                     │   - Pub/Sub (락 해제)   │
                     │   - Session Store       │
@@ -111,14 +111,16 @@ docker compose -f docker-compose.stage.yaml ps
 예상 출력:
 
 ```
-NAME                       SERVICE   STATUS
-scale-mysql                mysql     running (healthy)
-scale-redis                redis     running (healthy)
-scale-nginx                nginx     running
-hhplus-e-commerce-app-1    app       running
-hhplus-e-commerce-app-2    app       running
+NAME                       SERVICE         STATUS
+scale-mysql                mysql           running (healthy)
+scale-redis-session        redis-session   running (healthy)
+scale-redis-lock           redis-lock      running (healthy)
+scale-redis-cache          redis-cache     running (healthy)
+scale-nginx                nginx           running
+hhplus-e-commerce-app-1    app             running
+hhplus-e-commerce-app-2    app             running
 ...
-hhplus-e-commerce-app-10   app       running
+hhplus-e-commerce-app-10   app             running
 ```
 
 ### Step 3: K6 부하 테스트 실행
@@ -144,7 +146,14 @@ K6 출력에서 확인할 항목:
 Redis 부하 확인:
 
 ```bash
-docker exec scale-redis redis-cli INFO stats | grep -E "(commands|connections)"
+# 분산 락 Redis 확인
+docker exec scale-redis-lock redis-cli INFO stats | grep -E "(commands|connections)"
+
+# 캐시 Redis 확인
+docker exec scale-redis-cache redis-cli INFO stats | grep -E "(commands|connections)"
+
+# 세션 Redis 확인
+docker exec scale-redis-session redis-cli INFO stats | grep -E "(commands|connections)"
 ```
 
 ### Step 5: 종료
@@ -250,7 +259,10 @@ docker compose -f docker-compose.stage.yaml logs app
 ### Redis 연결 실패
 
 ```bash
-docker exec scale-redis redis-cli ping
+# 각 Redis 인스턴스 확인
+docker exec scale-redis-session redis-cli ping
+docker exec scale-redis-lock redis-cli ping
+docker exec scale-redis-cache redis-cli ping
 ```
 
 ### 세션 문제 (401 Unauthorized)
