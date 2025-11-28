@@ -1,4 +1,4 @@
-import { OrderExpirationScheduler } from '@schedulers/order-expiration.scheduler';
+import { OrderExpirationScheduler } from '@/@schedulers/order-expiration.scheduler';
 import {
   ProductPrismaRepository,
   ProductOptionRepository,
@@ -16,10 +16,10 @@ import { User } from '@/user/domain/entities/user.entity';
 import { OrderStatus } from '@/order/domain/entities/order-status.vo';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
-  setupIntegrationTest,
+  setupDatabaseTest,
   cleanupDatabase,
   teardownIntegrationTest,
-} from './setup';
+} from '../setup';
 
 describe('OrderExpirationScheduler Integration Tests', () => {
   let prismaService: PrismaService;
@@ -31,7 +31,7 @@ describe('OrderExpirationScheduler Integration Tests', () => {
   let userRepository: UserPrismaRepository;
 
   beforeAll(async () => {
-    prismaService = await setupIntegrationTest();
+    prismaService = await setupDatabaseTest();
   }, 60000); // 60초 타임아웃
 
   afterAll(async () => {

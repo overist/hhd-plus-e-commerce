@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 
 // GLOBAL MODULES
 import { GlobalPrismaModule } from './@common/prisma-manager/prisma.module';
+import { GlobalRedisModule } from './@common/redis-manager/redis.module';
+import { GlobalCacheModule } from './@common/cache-manager/cache.module';
+import { HealthModule } from './@common/health/health.module';
 
 // AUTH MODULE
 import { AuthModule } from './@auth/auth.module';
@@ -18,6 +21,9 @@ import { SchedulerModule } from './@schedulers/scheduler.module';
   imports: [
     // GLOBAL
     GlobalPrismaModule,
+    GlobalRedisModule,
+    GlobalCacheModule,
+    HealthModule,
 
     // AUTH MODULE
     AuthModule,

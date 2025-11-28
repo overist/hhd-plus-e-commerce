@@ -7,6 +7,10 @@ NestJS 기반 이커머스 백엔드 시스템
 - **Framework**: NestJS
 - **Database**: MySQL 8.0 (InnoDB, MVCC)
 - **ORM**: Prisma
+- **Cache/Lock**: Redis (3개 분리 구성)
+  - Session: 세션 저장 (express-session)
+  - Lock: 분산 락 (Redlock + Pub/Sub)
+  - Cache: API 응답 캐시 (@nestjs/cache-manager)
 - **Testing**: Jest, Testcontainers
 
 ---
@@ -21,6 +25,8 @@ src/
 │   ├── exception/            # 도메인/검증 예외 필터
 │   ├── guards/               # 인증 가드
 │   ├── mutex-manager/        # 분산 락 관리자
+│   ├── redis-manager/        # Redis 연결 관리
+│   ├── cache-manager/        # API 응답 캐시 관리
 │   └── prisma-manager/       # Prisma 트랜잭션 컨텍스트
 │
 ├── cart/                     # 장바구니 도메인 모듈
@@ -143,6 +149,46 @@ MySQL InnoDB 기본 격리 수준: **REPEATABLE READ**
 | **장점**      | 데이터 일관성 강력 보장  | 높은 동시성, 데드락 없음               |
 | **단점**      | 동시성 낮음, 데드락 가능 | 재시도 오버헤드 or 요청 강제 실패 처리 |
 
+### 4. Redis 분산 락 (Distributed Lock)
+
+**적용 대상:** 쿠폰 발급 (Scale-out 환경)
+
+```typescript
+// Redlock + Pub/Sub 기반 분산 락
+const lockKey = `coupon:issue:${couponId}`;
+await this.redisService.withLock(lockKey, async () => {
+  // 쿠폰 발급 로직
+});
+```
+
+**특징:**
+
+- **Redlock 알고리즘**: 분산 환경에서 안전한 락 획득
+- **Pub/Sub 기반 대기**: Spin Lock 대비 Redis 부하 80% 감소
+- **자동 TTL 연장**: 장기 작업 시 락 만료 방지
+
+> 📖 **상세 분석 문서**: [docs/REDIS_LOCK_TIMELINE.md](docs/REDIS_LOCK_TIMELINE.md)
+
+---
+
+## 🚀 캐시 전략
+
+### API 응답 캐시
+
+인기 상품 조회 API에 `@nestjs/cache-manager` 기반 캐시 적용:
+
+```typescript
+@UseInterceptors(HttpCacheInterceptor)
+@CacheKey(CACHE_KEYS.PRODUCTS_TOP)
+@CacheTTL(CACHE_TTL.TEN_MINUTES)
+@Get('top')
+async getTopProducts() { ... }
+```
+
+| 캐시 대상       | TTL    | 무효화 시점    |
+| --------------- | ------ | -------------- |
+| 인기 상품 Top 5 | 24시간 | 스냅샷 갱신 시 |
+
 ---
 
 ## 📊 테스트
@@ -152,6 +198,8 @@ MySQL InnoDB 기본 격리 수준: **REPEATABLE READ**
 ```
 test/
 ├── unit/                     # 단위 테스트
+│   ├── common/               # 공통 모듈 테스트
+│   │   └── redis.service.spec.ts
 │   └── domain/
 │       ├── cart/
 │       ├── coupon/
@@ -159,11 +207,13 @@ test/
 │       ├── product/
 │       └── user/
 ├── integration/              # 통합 테스트
-│   ├── balance-charge.integration.spec.ts
-│   ├── coupon-issue.service.integration.spec.ts
-│   ├── order-expiration.scheduler.integration.spec.ts
-│   ├── payment.integration.spec.ts
-│   ├── product-option-stock.integration.spec.ts
+│   ├── database/             # DB 동시성 테스트
+│   │   ├── balance-charge.integration.spec.ts
+│   │   ├── coupon-issue.service.integration.spec.ts
+│   │   └── ...
+│   ├── redis/                # Redis 분산 락 테스트
+│   │   ├── issue-coupon.use-case.integration.spec.ts
+│   │   └── redis-lock.integration.spec.ts
 │   └── setup.ts
 └── e2e/                      # E2E 테스트
     ├── cart.e2e-spec.ts
@@ -204,12 +254,54 @@ pnpm test -- "balance-charge"
 ### 인프라 실행
 
 ```bash
-# Docker Compose로 MySQL 실행
+# Docker Compose로 MySQL + Redis 3개 실행
 pnpm infra:up
 
 # 인프라 중지
 pnpm infra:down
 ```
+
+### Redis 구성
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Redis 3개 분리 구성                    │
+├─────────────────────────────────────────────────────────┤
+│  :6379  │  Session Redis  │  세션 저장 (express-session)│
+│  :6380  │  Lock Redis     │  분산 락 (Redlock + Pub/Sub)│
+│  :6381  │  Cache Redis    │  API 응답 캐시              │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Scale-out 인프라 (Stage)
+
+```bash
+# 다중 서버 + Nginx LB 환경 실행
+pnpm infra:up:stage
+```
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Scale-out 구성                        │
+├─────────────────────────────────────────────────────────┤
+│  Nginx (:80)     │  Load Balancer (least_conn)          │
+│  App x N         │  NestJS 서버 (Docker --scale app=N)  │
+│  MySQL (:3306)   │  Primary Database                    │
+│  Redis x 3       │  Session / Lock / Cache              │
+└─────────────────────────────────────────────────────────┘
+```
+
+### K6 부하 테스트
+
+```bash
+# 쿠폰 발급 동시성 테스트 (100 VUs, 10초)
+k6 run k6/issue-coupon.script.js
+
+# 잔액 충전 동시성 테스트
+k6 run k6/balance-charge.script.js
+```
+
+> 📖 **K6 테스트 가이드**: [k6/README.md](k6/README.md)
 
 ### Prisma 명령어
 
@@ -225,8 +317,24 @@ pnpm prisma:diff-check
 
 ## 📚 문서
 
+### 아키텍처 & 설계
+
 - [아키텍처 설계](docs/ARCHITECTURE.md)
 - [쿼리 최적화 보고서](docs/QUERY_OPTIMIZATION_REPORT.md)
+
+### Redis & 동시성
+
+- [Redis 분산 락 타임라인](docs/REDIS_LOCK_TIMELINE.md)
+- [Redis 분산 락 성능 분석](docs/REDIS_LOCK_PERFORMANCE.md)
+- [Redis 분산 락 로그 분석](docs/REDIS_LOCK_LOG_ANALYSIS.md)
+
+### 캐시 & 성능
+
+- [캐시 성능 개선 보고서](docs/CACHE_PERFORMANCE_REPORT.md)
+- [K6 부하 테스트 가이드](k6/README.md)
+
+### API 문서
+
 - [API 요구사항](docs/api/requirements.md)
 - [API 명세서](docs/api/api-specification.md)
 - [데이터 모델](docs/api/data-models.md)

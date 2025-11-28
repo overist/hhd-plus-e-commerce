@@ -6,10 +6,18 @@ import {
   ParseIntPipe,
   Patch,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { HttpCacheInterceptor } from '@common/cache-manager/http-cache.interceptor';
+import {
+  CACHE_KEYS,
+  CACHE_TTL,
+  withJitter,
+} from '@common/cache-manager/cache.keys';
 import { AdminGuard } from '@common/guards/admin.guard';
 
 // DTOs
@@ -55,6 +63,9 @@ export class ProductController {
    * TODO: 필터링, 페이징 기능 추가
    */
   @Get()
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey(CACHE_KEYS.PRODUCTS_LIST)
+  @CacheTTL(withJitter(CACHE_TTL.ONE_DAY))
   @ApiOperation({
     summary: '상품 목록 조회',
     description: '판매 중인 상품 목록을 조회합니다.',
@@ -76,6 +87,9 @@ export class ProductController {
    * 최근 3일간 가장 많이 팔린 상위 5개 상품 조회
    */
   @Get('top')
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey(CACHE_KEYS.PRODUCTS_TOP)
+  @CacheTTL(withJitter(CACHE_TTL.ONE_DAY))
   @ApiOperation({
     summary: '상위 상품 조회',
     description: '최근 3일간 가장 많이 팔린 상위 5개 상품을 조회합니다.',
@@ -97,6 +111,9 @@ export class ProductController {
    * 특정 상품의 상세 정보 및 옵션 조회
    */
   @Get(':productId')
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey(CACHE_KEYS.PRODUCT_DETAIL)
+  @CacheTTL(withJitter(CACHE_TTL.ONE_DAY))
   @ApiOperation({
     summary: '상품 상세 조회',
     description: '특정 상품의 상세 정보를 조회합니다.',
