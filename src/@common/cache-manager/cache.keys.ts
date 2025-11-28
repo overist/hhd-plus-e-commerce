@@ -57,3 +57,15 @@ export const CACHE_TTL = {
   /** 1일 */
   ONE_DAY: 24 * 60 * 60 * 1000,
 } as const;
+
+/**
+ * TTL에 랜덤 지터(jitter)를 적용하여 캐시 스탬피드 방지
+ */
+export function withJitter(
+  baseTtl: number,
+  jitterPercent: number = 10,
+): number {
+  const jitterRange = baseTtl * (jitterPercent / 100);
+  const jitter = Math.random() * jitterRange * 2 - jitterRange; // -jitterRange ~ +jitterRange
+  return Math.round(baseTtl + jitter);
+}
