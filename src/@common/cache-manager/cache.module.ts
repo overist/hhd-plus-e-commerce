@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-ioredis-yet';
+import { Keyv } from 'keyv';
+import KeyvRedis from '@keyv/redis';
 import { HttpCacheInterceptor } from './http-cache.interceptor';
 
 /**
@@ -21,15 +22,13 @@ import { HttpCacheInterceptor } from './http-cache.interceptor';
 
         // Redis 캐시 사용 (REDIS_CACHE_URL이 설정된 경우)
         if (cacheRedisUrl) {
-          const url = new URL(cacheRedisUrl);
-          const store = await redisStore({
-            host: url.hostname,
-            port: parseInt(url.port || '6379', 10),
-            password: url.password || undefined,
-            ttl: 60 * 1000, // 기본 TTL: 60초 (밀리초)
-          });
+          const keyvRedis = new KeyvRedis(cacheRedisUrl);
+          const keyv = new Keyv({ store: keyvRedis, namespace: 'cache' });
 
-          return { store };
+          return {
+            stores: [keyv],
+            ttl: 60 * 1000, // 기본 TTL: 60초 (밀리초)
+          };
         }
 
         // 메모리 캐시 사용 (기본값, 개발 환경)
