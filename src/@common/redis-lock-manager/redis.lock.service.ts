@@ -52,6 +52,7 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
     this.subscriber.on('error', (err) =>
       this.logger.error('Redis Lock subscribe error', err),
     );
+    this.subscriber.psubscribe(`${this.LOCK_CHANNEL_PREFIX}*`);
 
     // Redlock 인스턴스 초기화
     if (!this.redlock) {
@@ -105,9 +106,6 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
     const maxWaitTime = 10000;
     while (Date.now() - startTime < maxWaitTime) {
       try {
-        // [0] 락 획득 전 채널 구독 보장 - sub 이전 pub 방지
-        await this.subscriber.subscribe(channelName);
-
         // [1] 락 획득 -> [2] 로직 수행 -> [3] 락 해제 -> [4] 락해제 이벤트 발행
         return await this.executeWithRedlock(lockKey, channelName, ttl, fn);
       } catch (error) {
@@ -119,17 +117,10 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
         // Redis NX에 의한 Execution Error 발생시 waitTimeout 대기 후 재시도
         // 대기 중 락 해제 이벤트를 수신하면 즉시 해제
         await this.waitForUnlock(channelName, waitTimeout);
-      } finally {
-        // 채널 구독 해제
-        try {
-          this.subscriber.unsubscribe(channelName);
-        } catch (err) {
-          this.logger.error(`Failed to unsubscribe ${channelName}`, err);
-        }
       }
     }
 
-    // 최대 대기 시간 오버시 요청 실패(메모리 누수 방지, 10초 이상의 대기는 비정상적 부하 시나리오)
+    // 최대 대기 시간 오버시 요청 실패(메모리 누수 방지)
     throw new Error(
       `Failed to acquire lock within timeout for key: ${lockKey}`,
     );
@@ -196,27 +187,21 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
       );
 
       // ** Resolve Case 1 : 락 릴리즈 이벤트 수신시 wait 종료
-      const handler = (channel: string) => {
+      const handler = (pattern: string, channel: string) => {
         if (channel !== channelName) return;
 
-        cleanup();
+        clearTimeout(timer);
         resolve();
       };
-      this.subscriber.on('message', handler);
+
+      // ** 이벤트 리스너 등록
+      this.subscriber.once('pmessage', handler);
 
       // ** Resolve Case 2 : waitTimeout 도달시 wait 즉시 종료
       const timer = setTimeout(() => {
-        cleanup();
+        this.subscriber.removeListener('pmessage', handler);
         resolve();
       }, waitTimeout);
-
-      // 타이머 및 이벤트 정리 헬퍼
-      const cleanup = () => {
-        clearTimeout(timer);
-        try {
-          this.subscriber.removeListener('message', handler);
-        } catch (err) {}
-      };
     });
   }
 }
