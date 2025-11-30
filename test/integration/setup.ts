@@ -3,12 +3,12 @@ import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
-import { RedisService } from '@common/redis-manager/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 
 let mysqlContainer: StartedMySqlContainer;
 let redisContainer: StartedRedisContainer;
 let prismaService: PrismaService;
-let redisService: RedisService;
+let redisLockService: RedisLockService;
 
 /**
  * 모든 통합 테스트 시작 전 한 번만 실행
@@ -74,9 +74,9 @@ export async function setupDatabaseTest(): Promise<PrismaService> {
 }
 
 /**
- * Redis 컨테이너를 시작하고 RedisService를 반환
+ * Redis 컨테이너를 시작하고 redisLockService를 반환
  */
-export async function setupRedisForTest(): Promise<RedisService> {
+export async function setupRedisForTest(): Promise<redisLockService> {
   if (!redisContainer) {
     // Redis 컨테이너 시작
     redisContainer = await new RedisContainer('redis:8.4.0').start();
@@ -84,21 +84,21 @@ export async function setupRedisForTest(): Promise<RedisService> {
     const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getPort()}`;
     process.env.REDIS_URL = redisUrl;
 
-    // RedisService 인스턴스 생성 및 onModuleInit 호출
-    redisService = new RedisService();
-    await redisService.onModuleInit();
+    // redisLockService 인스턴스 생성 및 onModuleInit 호출
+    redisLockService = new RedisLockService();
+    await redisLockService.onModuleInit();
 
     console.log('✅ Redis 컨테이너 시작 완료 (ioredis + Redlock)');
   }
 
-  return redisService;
+  return redisLockService;
 }
 
 /**
- * RedisService 인스턴스 반환
+ * redisLockService 인스턴스 반환
  */
-export function getRedisService(): RedisService {
-  return redisService;
+export function getRedisLockService(): RedisLockService {
+  return redisLockService;
 }
 
 /**
@@ -138,14 +138,14 @@ export async function cleanupDatabase(prisma: PrismaService): Promise<void> {
  * 모든 통합 테스트 종료 후 한 번만 실행
  */
 export async function teardownIntegrationTest(): Promise<void> {
-  // RedisService를 먼저 정리 (컨테이너 종료 전에 클라이언트 연결 해제)
-  if (redisService) {
+  // redisLockService를 먼저 정리 (컨테이너 종료 전에 클라이언트 연결 해제)
+  if (redisLockService) {
     try {
-      await redisService.onModuleDestroy();
+      await redisLockService.onModuleDestroy();
     } catch {
       // 이미 연결이 끊어진 경우 무시
     }
-    redisService = null as any;
+    redisLockService = null as any;
   }
 
   if (prismaService) {

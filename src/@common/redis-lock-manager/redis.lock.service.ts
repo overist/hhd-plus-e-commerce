@@ -17,8 +17,8 @@ import Redlock, { ExecutionError } from 'redlock';
  * - 캐시용 Redis (REDIS_CACHE_URL): cache.module.ts에서 cache-manager와 함께 사용
  */
 @Injectable()
-export class RedisService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(RedisService.name);
+export class RedisLockService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RedisLockService.name);
   private readonly LOCK_KEY_PREFIX = 'lock:';
   private readonly LOCK_CHANNEL_PREFIX = 'lock:release:';
 
@@ -27,6 +27,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private publisher: Redis;
   private subscriber: Redis;
   private redlock: Redlock;
+
+  /** getter (통합테스트 전용) */
+  getClient(): Redis {
+    return this.client;
+  }
 
   // 모듈 초기화
   async onModuleInit(): Promise<void> {

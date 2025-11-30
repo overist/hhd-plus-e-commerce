@@ -1,4 +1,4 @@
-import { RedisService } from '@common/redis-manager/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 import { setupRedisForTest, teardownIntegrationTest } from '../setup';
 
 /**
@@ -7,10 +7,10 @@ import { setupRedisForTest, teardownIntegrationTest } from '../setup';
  * - withLock 메서드를 통한 분산 락 테스트
  */
 describe('RedisService Redlock Integration Tests', () => {
-  let redisService: RedisService;
+  let redisLockService: RedisLockService;
 
   beforeAll(async () => {
-    redisService = await setupRedisForTest();
+    redisLockService = await setupRedisForTest();
   }, 60000);
 
   afterAll(async () => {
@@ -19,7 +19,7 @@ describe('RedisService Redlock Integration Tests', () => {
 
   beforeEach(async () => {
     // 테스트 간 키 정리
-    const client = redisService.getClient();
+    const client = redisLockService.getClient();
     const keys = await client.keys('*');
     if (keys.length > 0) {
       await client.del(...keys);
@@ -32,7 +32,7 @@ describe('RedisService Redlock Integration Tests', () => {
       let executed = false;
 
       // When
-      const result = await redisService.withLock('test:basic', async () => {
+      const result = await redisLockService.withLock('test:basic', async () => {
         executed = true;
         return 'success';
       });
@@ -44,13 +44,13 @@ describe('RedisService Redlock Integration Tests', () => {
 
     it('작업 완료 후 락이 자동으로 해제된다', async () => {
       // Given & When
-      await redisService.withLock('test:auto-release', async () => {
+      await redisLockService.withLock('test:auto-release', async () => {
         return 'done';
       });
 
       // Then: 락이 해제되어 다시 획득 가능
       let acquiredAgain = false;
-      await redisService.withLock('test:auto-release', async () => {
+      await redisLockService.withLock('test:auto-release', async () => {
         acquiredAgain = true;
       });
       expect(acquiredAgain).toBe(true);
@@ -59,14 +59,14 @@ describe('RedisService Redlock Integration Tests', () => {
     it('작업 중 에러가 발생해도 락이 해제된다', async () => {
       // When & Then
       await expect(
-        redisService.withLock('test:error-release', async () => {
+        redisLockService.withLock('test:error-release', async () => {
           throw new Error('작업 중 에러');
         }),
       ).rejects.toThrow('작업 중 에러');
 
       // Then: 락이 해제되어 다시 획득 가능
       let acquiredAgain = false;
-      await redisService.withLock('test:error-release', async () => {
+      await redisLockService.withLock('test:error-release', async () => {
         acquiredAgain = true;
       });
       expect(acquiredAgain).toBe(true);
@@ -81,7 +81,7 @@ describe('RedisService Redlock Integration Tests', () => {
 
       // When: 5개의 동시 요청
       const promises = Array.from({ length: 5 }, async (_, index) => {
-        return redisService.withLock('test:sequential', async () => {
+        return redisLockService.withLock('test:sequential', async () => {
           const currentValue = ++counter;
           executionOrder.push(index);
           // 작업 시간 시뮬레이션
@@ -105,11 +105,11 @@ describe('RedisService Redlock Integration Tests', () => {
 
       // When: 서로 다른 키로 동시 실행
       await Promise.all([
-        redisService.withLock('test:different-1', async () => {
+        redisLockService.withLock('test:different-1', async () => {
           await new Promise((resolve) => setTimeout(resolve, 100));
           results.push('key1');
         }),
-        redisService.withLock('test:different-2', async () => {
+        redisLockService.withLock('test:different-2', async () => {
           await new Promise((resolve) => setTimeout(resolve, 100));
           results.push('key2');
         }),
@@ -133,7 +133,7 @@ describe('RedisService Redlock Integration Tests', () => {
       // When
       // 락을 사용하여 동시에 카운터1 증가
       const promises1 = Array.from({ length: iterations }, async () => {
-        return redisService.withLock('test:counter', async () => {
+        return redisLockService.withLock('test:counter', async () => {
           const current = counterWithLock;
           await new Promise((resolve) => setTimeout(resolve, 1)); // 약간의 지연
           counterWithLock = current + 1;
@@ -168,7 +168,7 @@ describe('RedisService Redlock Integration Tests', () => {
       let completed = false;
 
       // When
-      await redisService.withLock(
+      await redisLockService.withLock(
         'test:auto-extend',
         async () => {
           // TTL(1000ms)보다 긴 작업
@@ -188,7 +188,7 @@ describe('RedisService Redlock Integration Tests', () => {
     it('중첩된 비동기 작업에서도 에러가 정상적으로 전파된다', async () => {
       // When & Then
       await expect(
-        redisService.withLock('test:nested-error', async () => {
+        redisLockService.withLock('test:nested-error', async () => {
           return await (async () => {
             await new Promise((resolve) => setTimeout(resolve, 10));
             throw new Error('중첩된 에러');

@@ -1,5 +1,5 @@
 import { PrismaService } from '@common/prisma-manager/prisma.service';
-import { RedisService } from '@common/redis-manager/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 import { IssueCouponUseCase } from '@/coupon/application/issue-coupon.use-case';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import {
@@ -20,7 +20,7 @@ import { IssueCouponCommand } from '@/coupon/application/dto/issue-coupon.dto';
 
 describe('IssueCouponUseCase 동시성 통합 테스트', () => {
   let prismaService: PrismaService;
-  let redisService: RedisService;
+  let redisLockService: RedisLockService;
   let issueCouponUseCase: IssueCouponUseCase;
   let couponRepository: ICouponRepository;
   let userCouponRepository: IUserCouponRepository;
@@ -28,7 +28,7 @@ describe('IssueCouponUseCase 동시성 통합 테스트', () => {
   beforeAll(async () => {
     // MySQL 및 Redis 컨테이너 시작
     prismaService = await setupDatabaseTest();
-    redisService = await setupRedisForTest();
+    redisLockService = await setupRedisForTest();
 
     // Repository 인스턴스 생성
     couponRepository = new CouponPrismaRepository(prismaService);
@@ -44,7 +44,7 @@ describe('IssueCouponUseCase 동시성 통합 테스트', () => {
     issueCouponUseCase = new IssueCouponUseCase(
       couponDomainService,
       prismaService,
-      redisService,
+      redisLockService,
     );
   }, 120000);
 
@@ -57,7 +57,7 @@ describe('IssueCouponUseCase 동시성 통합 테스트', () => {
     await cleanupDatabase(prismaService);
 
     // Redis 키 정리
-    const client = redisService.getClient();
+    const client = redisLockService.getClient();
     const keys = await client.keys('*');
     if (keys.length > 0) {
       await client.del(keys);

@@ -156,7 +156,7 @@ MySQL InnoDB 기본 격리 수준: **REPEATABLE READ**
 ```typescript
 // Redlock + Pub/Sub 기반 분산 락
 const lockKey = `coupon:issue:${couponId}`;
-await this.redisService.withLock(lockKey, async () => {
+await this.redisLockService.withLock(lockKey, async () => {
   // 쿠폰 발급 로직
 });
 ```

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { IssueCouponCommand, IssueCouponResult } from './dto/issue-coupon.dto';
-import { RedisService } from '@common/redis-manager/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 
 @Injectable()
 export class IssueCouponUseCase {
@@ -10,7 +10,7 @@ export class IssueCouponUseCase {
     // Dependency Injection
     private readonly couponService: CouponDomainService,
     private readonly prisma: PrismaService,
-    private readonly redisService: RedisService,
+    private readonly redisLockService: RedisLockService,
   ) {}
 
   /**
@@ -19,7 +19,7 @@ export class IssueCouponUseCase {
   async execute(cmd: IssueCouponCommand): Promise<IssueCouponResult> {
     const lockKey = `coupon:issue:${cmd.couponId}`;
 
-    return await this.redisService.withLock(lockKey, async () => {
+    return await this.redisLockService.withLock(lockKey, async () => {
       return await this.prisma.runInTransaction(async () => {
         const coupon = await this.couponService.getCoupon(cmd.couponId);
         const issuedCoupon = await this.couponService.issueCouponToUser(

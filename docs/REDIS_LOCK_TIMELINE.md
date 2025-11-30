@@ -1,6 +1,6 @@
 # Redis Lock Timeline (2 App Servers, 1 Redis Cluster)
 
-이 문서는 `RedisService.withLock` 사용 시 **서버 2대 + 단일(클러스터링 가능한) Redis 노드** 환경에서 동시성이 어떻게 보장되는지 시계열로 설명합니다. Redlock 과 Pub/Sub 결합으로 Redis 부하를 줄이는 전략에 초점을 둡니다.
+이 문서는 `RedisLockService.withLock` 사용 시 **서버 2대 + 단일(클러스터링 가능한) Redis 노드** 환경에서 동시성이 어떻게 보장되는지 시계열로 설명합니다. Redlock 과 Pub/Sub 결합으로 Redis 부하를 줄이는 전략에 초점을 둡니다.
 
 ## 등장 컴포넌트
 

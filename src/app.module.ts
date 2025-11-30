@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 // GLOBAL MODULES
 import { GlobalPrismaModule } from './@common/prisma-manager/prisma.module';
-import { GlobalRedisModule } from './@common/redis-manager/redis.module';
+import { GlobalRedisModule } from './@common/redis-lock-manager/redis.lock.module';
 import { GlobalCacheModule } from './@common/cache-manager/cache.module';
 import { HealthModule } from './@common/health/health.module';
 
