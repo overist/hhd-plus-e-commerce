@@ -182,6 +182,88 @@ describe('RedisService Redlock Integration Tests', () => {
       // Then: 자동 연장으로 작업 완료
       expect(completed).toBe(true);
     }, 10000);
+
+    it('5회 이상 자동 연장이 안정적으로 동작한다', async () => {
+      // Given:
+      // - TTL: 1000ms
+      // - automaticExtensionThreshold: 500ms (TTL 만료 500ms 전에 자동 연장)
+      // - 작업 시간: 5500ms (5회 이상 연장 필요)
+      // - 예상 연장 횟수: 약 10회 (5500ms / 500ms interval)
+      //
+      // 핵심 검증:
+      // 락 연장이 필요한 시점(TTL 만료 직전)에 다른 클라이언트가 락 획득을 시도해도
+      // 절대 획득되지 않아야 함 (자동 연장이 정상 동작하는 증거)
+
+      const lockKey = 'test:multi-extend-strict';
+      let mainTaskCompleted = false;
+      let lockViolationDetected = false;
+      const intrusionAttempts: { attemptTime: number; acquired: boolean }[] =
+        [];
+      const startTime = Date.now();
+
+      // 동시 실행: 메인 작업 + 주기적 침입 시도
+      await Promise.all([
+        // 메인 작업: 6초간 락 점유 (TTL 1초, 약 10~12회 연장 필요)
+        redisLockService.withLock(
+          lockKey,
+          async () => {
+            // 500ms 간격으로 12회 체크 (총 6초)
+            for (let i = 0; i < 12; i++) {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+            mainTaskCompleted = true;
+            return 'done';
+          },
+          { ttl: 1000 },
+        ),
+
+        // 침입자: 락 연장 타이밍(500ms 간격)에 맞춰 락 획득 시도
+        (async () => {
+          // 메인 작업이 락을 획득할 시간을 줌
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          // 6초 동안 500ms 간격으로 락 획득 직접 시도 (Redlock 우회)
+          const client = redisLockService.getClient();
+          for (let i = 0; i < 12; i++) {
+            const attemptTime = Date.now() - startTime;
+
+            // NX 옵션으로 락 획득 시도 (락이 없을 때만 성공)
+            const result = await client.set(
+              `lock:${lockKey}`,
+              'intruder',
+              'PX',
+              100,
+              'NX',
+            );
+
+            const acquired = result === 'OK';
+            intrusionAttempts.push({ attemptTime, acquired });
+
+            if (acquired) {
+              lockViolationDetected = true;
+              // 획득에 성공했다면 즉시 삭제 (테스트 진행을 위해)
+              await client.del(`lock:${lockKey}`);
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        })(),
+      ]);
+
+      const totalElapsed = Date.now() - startTime;
+
+      // Then
+      // 1. 메인 작업이 정상 완료되어야 함
+      expect(mainTaskCompleted).toBe(true);
+
+      // 2. 6초 이상 작업이 수행됨 (5회 이상 연장됨)
+      expect(totalElapsed).toBeGreaterThan(5500);
+
+      // 3. 핵심: 모든 침입 시도가 실패해야 함 (락이 항상 유효했음)
+      const successfulIntrusions = intrusionAttempts.filter((a) => a.acquired);
+      expect(successfulIntrusions).toHaveLength(0);
+      expect(lockViolationDetected).toBe(false);
+    }, 15000);
   });
 
   describe('에러 처리', () => {
