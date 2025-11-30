@@ -31,6 +31,7 @@ module.exports = tseslint.config(
       '@typescript-eslint/no-unused-vars': 'warn',
       'eol-last': ['error', 'always'],
       'prettier/prettier': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
   {
