@@ -4,7 +4,6 @@ import {
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { EventEmitter } from 'events';
 import Redis from 'ioredis';
 import Redlock, { ExecutionError } from 'redlock';
 
@@ -28,12 +27,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private publisher: Redis;
   private subscriber: Redis;
   private redlock: Redlock;
-  private readonly eventEmitter = new EventEmitter();
-  private readonly subscribedChannels = new Set<string>();
-
-  constructor() {
-    this.eventEmitter.setMaxListeners(0); // allow many concurrent waiters per channel
-  }
 
   // 모듈 초기화
   async onModuleInit(): Promise<void> {
@@ -50,12 +43,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     );
 
     this.subscriber = new Redis(lockRedisUrl);
+    this.subscriber.setMaxListeners(0);
     this.subscriber.on('error', (err) =>
       this.logger.error('Redis Lock subscribe error', err),
     );
-    this.subscriber.on('message', (channel) => {
-      this.eventEmitter.emit(channel);
-    });
 
     // Redlock 인스턴스 초기화
     if (!this.redlock) {
@@ -83,14 +74,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client?.quit();
   }
 
-  // Redis 클라이언트 반환 (캐싱 등에서 사용)
-  getClient(): Redis {
-    return this.client;
-  }
-  getRedlock(): Redlock {
-    return this.redlock;
-  }
-
   /**
    * Redlock을 이용한 분산 락 처리
    * @param key 락 대상 리소스 식별자 (예: 'coupon:issue:1')
@@ -99,33 +82,52 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * @param fn 락 획득 후 실행할 함수
    * @param options 락 옵션
    * @param options.ttl 락 TTL (기본값: 5000ms)
-   * @param options.waitTimeout 분산락 해제 이벤트 대기 타임아웃 (기본값: ttl)
+   * @param options.waitTimeout 분산락 해제 이벤트 대기 타임아웃 (기본값: 1000ms) - 만료시 기다리지 않고 즉시 재시도
    */
   async withLock<T>(
     key: string,
     fn: () => Promise<T>,
     options?: { ttl?: number; waitTimeout?: number },
   ): Promise<T> {
-    const { ttl = 5000, waitTimeout = ttl } = options ?? {};
+    const { ttl = 5000, waitTimeout = 1000 } = options ?? {};
     const lockKey = `${this.LOCK_KEY_PREFIX}${key}`;
     const channelName = `${this.LOCK_CHANNEL_PREFIX}${key}`;
 
     this.logger.debug(`[LOCK] 🔒 Attempting to acquire lock: ${lockKey}`);
 
-    while (true) {
+    // ttl과 별개로 withLock 최대 대기시간 10초 - 메모리 누수 방지
+    const startTime = Date.now();
+    const maxWaitTime = 10000;
+    while (Date.now() - startTime < maxWaitTime) {
       try {
+        // [0] 락 획득 전 채널 구독 보장 - sub 이전 pub 방지
+        await this.subscriber.subscribe(channelName);
+
+        // [1] 락 획득 -> [2] 로직 수행 -> [3] 락 해제 -> [4] 락해제 이벤트 발행
         return await this.executeWithRedlock(lockKey, channelName, ttl, fn);
       } catch (error) {
+        // Redis NX 옵션에 의한 에러가 아닌 경우 에러 전파
         if (!(error instanceof ExecutionError)) {
           throw error;
         }
 
-        this.logger.debug(
-          `[LOCK] ⏳ Lock busy, waiting for release: ${lockKey}`,
-        );
+        // Redis NX에 의한 Execution Error 발생시 waitTimeout 대기 후 재시도
+        // 대기 중 락 해제 이벤트를 수신하면 즉시 해제
         await this.waitForUnlock(channelName, waitTimeout);
+      } finally {
+        // 채널 구독 해제
+        try {
+          this.subscriber.unsubscribe(channelName);
+        } catch (err) {
+          this.logger.error(`Failed to unsubscribe ${channelName}`, err);
+        }
       }
     }
+
+    // 최대 대기 시간 오버시 요청 실패(메모리 누수 방지, 10초 이상의 대기는 비정상적 부하 시나리오)
+    throw new Error(
+      `Failed to acquire lock within timeout for key: ${lockKey}`,
+    );
   }
 
   private async executeWithRedlock<T>(
@@ -159,8 +161,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async notifyLockRelease(channelName: string): Promise<void> {
-    this.eventEmitter.emit(channelName);
-
     this.logger.debug(`[LOCK] 🔓 Lock released, publishing to: ${channelName}`);
 
     if (!this.publisher) {
@@ -185,38 +185,33 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     channelName: string,
     waitTimeout: number,
   ): Promise<void> {
-    await this.ensureChannelSubscription(channelName);
+    return await new Promise<void>((resolve) => {
+      this.logger.debug(
+        `[LOCK] ⏳ Lock busy, waiting for release: ${channelName}`,
+      );
 
-    await new Promise<void>((resolve) => {
-      const handler = () => {
+      // ** Resolve Case 1 : 락 릴리즈 이벤트 수신시 wait 종료
+      const handler = (channel: string) => {
+        if (channel !== channelName) return;
+
         cleanup();
         resolve();
       };
+      this.subscriber.on('message', handler);
 
+      // ** Resolve Case 2 : waitTimeout 도달시 wait 즉시 종료
       const timer = setTimeout(() => {
         cleanup();
         resolve();
       }, waitTimeout);
 
+      // 타이머 및 이벤트 정리 헬퍼
       const cleanup = () => {
         clearTimeout(timer);
-        this.eventEmitter.off(channelName, handler);
+        try {
+          this.subscriber.removeListener('message', handler);
+        } catch (err) {}
       };
-
-      this.eventEmitter.once(channelName, handler);
     });
-  }
-
-  private async ensureChannelSubscription(channelName: string): Promise<void> {
-    if (!this.subscriber || this.subscribedChannels.has(channelName)) {
-      return;
-    }
-
-    try {
-      await this.subscriber.subscribe(channelName);
-      this.subscribedChannels.add(channelName);
-    } catch (error) {
-      this.logger.error(`Failed to subscribe channel ${channelName}`, error);
-    }
   }
 }

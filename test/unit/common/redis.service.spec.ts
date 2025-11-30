@@ -18,6 +18,19 @@ describe('RedisService', () => {
 
     // Mock Redlock 주입
     (redisService as any).redlock = mockRedlock;
+    // Mock Redis clients (subscriber/publisher/client) to avoid real network calls
+    (redisService as any).subscriber = {
+      subscribe: jest.fn().mockResolvedValue(undefined),
+      unsubscribe: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      removeListener: jest.fn(),
+      setMaxListeners: jest.fn(),
+    } as any;
+    (redisService as any).publisher = {
+      publish: jest.fn().mockResolvedValue(1),
+      on: jest.fn(),
+    } as any;
+    (redisService as any).client = { on: jest.fn() } as any;
   });
 
   describe('withLock', () => {
@@ -83,30 +96,6 @@ describe('RedisService', () => {
         'The operation was unable to achieve a quorum',
       );
       expect(mockFn).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('getClient', () => {
-    it('Redis 클라이언트를 반환한다', () => {
-      // Given
-      const mockClient = { ping: jest.fn() } as any;
-      (redisService as any).client = mockClient;
-
-      // When
-      const client = redisService.getClient();
-
-      // Then
-      expect(client).toBe(mockClient);
-    });
-  });
-
-  describe('getRedlock', () => {
-    it('Redlock 인스턴스를 반환한다', () => {
-      // When
-      const redlock = redisService.getRedlock();
-
-      // Then
-      expect(redlock).toBe(mockRedlock);
     });
   });
 });
