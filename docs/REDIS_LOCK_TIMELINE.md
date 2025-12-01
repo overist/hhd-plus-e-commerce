@@ -17,20 +17,19 @@ sequenceDiagram
     participant B as Server B
     participant R as Redis / Redlock
 
-    A->>R: SUBSCRIBE "lock:release:coupon:issue:42"
+    Note over A,B: PSUBSCRIBE "lock:release:*"
+
     A->>R: withLock(key="coupon:issue:42")
     R-->>A: Lock acquired (SET+PX+NX)
     Note over A: 비즈니스 로직 실행 (쿠폰 발급)
 
-    B->>R: SUBSCRIBE "lock:release:coupon:issue:42"
     B->>R: withLock(key="coupon:issue:42")
     R-->>B: ExecutionError (락 점유 중)
     Note over B: waitForUnlock - Pub/Sub 메시지 대기
 
     A->>R: 작업 완료 후 lock.release()
     A->>R: PUBLISH "lock:release:coupon:issue:42"
-    A->>R: UNSUBSCRIBE "lock:release:coupon:issue:42"
-    R-->>B: Pub/Sub 메시지 전달
+    R-->>B: Pub/Sub 메시지 전달 (패턴 매칭)
     Note over B: 이벤트 수신 → 대기 해제
 
     B->>R: 재시도 withLock(key="coupon:issue:42")
@@ -38,8 +37,9 @@ sequenceDiagram
     Note over B: 비즈니스 로직 실행
 
     B->>R: lock.release() + PUBLISH
-    B->>R: UNSUBSCRIBE "lock:release:coupon:issue:42"
     Note over R: 다음 대기자들에게 동일한 패턴 반복
+
+    Note over A,B: 모듈 종료시 패턴 구독 해제
 ```
 
 ### 키 네이밍 규칙
@@ -51,22 +51,23 @@ sequenceDiagram
 
 ### 동작 요약
 
-0. **락 획득 전 사전 구독**: `lock:release:*` 채널을 구독하여 락 해제 이벤트를 수신 대기합니다.
-1. **최초 획득**: Server A 가 Redlock `SET PX NX`로 락을 획득하고 작업을 수행합니다.
-2. **경쟁 요청**: Server B 는 동일 키로 락을 요청하지만 Redlock 이 `ExecutionError` 를 던져 즉시 실패합니다.
-3. **이벤트 기반 대기**: Server B 는 `waitForUnlock` 로직을 통해 이벤트를 기다립니다. 만약 waitTimeout(기본 1000ms) 이 지나면 이벤트를 기다리지 않고 즉시 재시도합니다.
-4. **락 해제 + 알림**: Server A 작업 완료 → Redlock `release()` → `PUBLISH` 로 대기자들에게 알립니다. 같은 채널로 전달된 Pub/Sub 메시지를 구독 중인 모든 대기자가 수신하여 즉시 재시도합니다.
-5. **재획득**: Server B 는 이벤트를 수신 후 `withLock` 을 재시도하여 락을 획득하고 작업을 수행합니다.
-6. **TTL 연장**: 락 획득 이후 수행하는 작업이 TTL 내 미완료 시 Redlock 의 automatic extension 이 동작하여 동시성을 보장합니다.
-7. **구독 해제**: 작업 완료 후 `lock:release:*` 채널의 구독을 해제합니다.
+0. **모듈 초기화 시 패턴 구독**: `onModuleInit`에서 `PSUBSCRIBE lock:release:*`로 모든 락 해제 이벤트를 구독합니다. 이는 서버가 시작될 때 한 번만 수행되며, 이후 모든 락 키에 대한 해제 이벤트를 수신할 수 있습니다.
+1. **최초 획득**: Server A가 Redlock `SET PX NX`로 락을 획득하고 작업을 수행합니다.
+2. **경쟁 요청**: Server B는 동일 키로 락을 요청하지만 Redlock이 `ExecutionError`를 던져 즉시 실패합니다.
+3. **이벤트 기반 대기**: Server B는 `waitForUnlock` 로직을 통해 이벤트를 기다립니다. 만약 waitTimeout(기본 1000ms)이 지나면 이벤트를 기다리지 않고 즉시 재시도합니다.
+4. **락 해제 + 알림**: Server A 작업 완료 → Redlock `release()` → `PUBLISH`로 대기자들에게 알립니다. 패턴 구독으로 전달된 Pub/Sub 메시지를 구독 중인 모든 대기자가 수신하여 즉시 재시도합니다.
+5. **재획득**: Server B는 이벤트를 수신 후 `withLock`을 재시도하여 락을 획득하고 작업을 수행합니다.
+6. **TTL 연장**: 락 획득 이후 수행하는 작업이 TTL 내 미완료 시 Redlock의 automatic extension이 동작하여 동시성을 보장합니다.
+7. **모듈 종료 시 구독 해제**: `onModuleDestroy`에서 `subscriber.quit()`를 호출하여 자동으로 구독이 해제됩니다.
 
-이 과정을 통해 서버 수가 늘어나도 Redis 에 대한 불필요한 재시도(폴링)를 최소화하면서 순차 실행이 보장됩니다.
+이 과정을 통해 서버 수가 늘어나도 Redis에 대한 불필요한 재시도(폴링)를 최소화하면서 순차 실행이 보장됩니다.
 
 ## 동시성 보장 포인트
 
-- **Redlock**: TTL, driftFactor, automaticExtensionThreshold 로 안전한 락 소유를 보장
-- **Pub/Sub**: 실패 시 즉시 재시도하지 않고 이벤트 기반으로 기다려 Redis 부하 완화
-- **키 네임스페이스**: `lock:{key}` / `lock:release:{key}` 구조로 리소스 별로 독립적인 락/이벤트 흐름 유지
+- **Redlock**: TTL, driftFactor, automaticExtensionThreshold로 안전한 락 소유를 보장
+- **Pub/Sub 패턴 구독**: 모듈 초기화 시 `PSUBSCRIBE lock:release:*`로 모든 락 해제 이벤트를 구독하여, 실패 시 즉시 재시도하지 않고 이벤트 기반으로 기다려 Redis 부하 완화
+- **이벤트 리스너 등록/해제**: `waitForUnlock` 내에서 `pmessage` 이벤트 리스너를 등록하고, 이벤트 수신 또는 타임아웃 시 리스너를 해제하여 메모리 누수 방지
+- **키 네임스페이스**: `lock:{key}` / `lock:release:{key}` 구조로 리소스별로 독립적인 락/이벤트 흐름 유지
 
 ## Edge Case : 5초 내외 무거운 로직 실행 시
 
