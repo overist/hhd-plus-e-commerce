@@ -26,7 +26,7 @@ npx jest test/integration/redis/issue-coupon.use-case.integration.spec.ts --verb
 
 ```typescript
 const lockKey = `coupon:issue:${cmd.couponId}`;
-return await this.redisService.withLock(lockKey, async () => {
+return await this.redisLockService.withLock(lockKey, async () => {
   // 쿠폰 발급 로직
 });
 ```

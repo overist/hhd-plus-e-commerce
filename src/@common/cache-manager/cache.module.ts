@@ -9,7 +9,7 @@ import { HttpCacheInterceptor } from './http-cache.interceptor';
  *
  * Redis 분리 구조:
  * - 세션용 Redis (REDIS_SESSION_URL): main.ts에서 express-session과 함께 사용
- * - 분산락용 Redis (REDIS_LOCK_URL): 이 서비스에서 Redlock과 함께 사용 (client, publisher, subscriber)
+ * - 분산락용 Redis (REDIS_LOCK_URL): redis.lock.service.ts에서 Redlock과 함께 사용 (client, publisher, subscriber)
  * - 캐시용 Redis (REDIS_CACHE_URL): 이 모듈에서 cache-manager와 함께 사용
  */
 @Global()

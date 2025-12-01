@@ -1,14 +1,13 @@
-import { RedisService } from '@common/redis-manager/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 import Redlock from 'redlock';
 
-describe('RedisService', () => {
-  let redisService: RedisService;
+describe('redisLockService', () => {
+  let redisLockService: RedisLockService;
   let mockRedlock: jest.Mocked<Redlock>;
 
   beforeEach(() => {
-    // RedisService 인스턴스 생성
-    redisService = new RedisService();
-
+    // redisLockService 인스턴스 생성
+    redisLockService = new RedisLockService();
     // Mock Redlock 생성
     mockRedlock = {
       using: jest.fn(),
@@ -17,7 +16,20 @@ describe('RedisService', () => {
     } as unknown as jest.Mocked<Redlock>;
 
     // Mock Redlock 주입
-    (redisService as any).redlock = mockRedlock;
+    (redisLockService as any).redlock = mockRedlock;
+    // Mock Redis clients (subscriber/publisher/client) to avoid real network calls
+    (redisLockService as any).subscriber = {
+      subscribe: jest.fn().mockResolvedValue(undefined),
+      unsubscribe: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      removeListener: jest.fn(),
+      setMaxListeners: jest.fn(),
+    } as any;
+    (redisLockService as any).publisher = {
+      publish: jest.fn().mockResolvedValue(1),
+      on: jest.fn(),
+    } as any;
+    (redisLockService as any).client = { on: jest.fn() } as any;
   });
 
   describe('withLock', () => {
@@ -30,7 +42,7 @@ describe('RedisService', () => {
       });
 
       // When
-      const result = await redisService.withLock('test-key', mockFn);
+      const result = await redisLockService.withLock('test-key', mockFn);
 
       // Then
       expect(result).toBe('result');
@@ -51,9 +63,9 @@ describe('RedisService', () => {
       });
 
       // When & Then
-      await expect(redisService.withLock('test-key', mockFn)).rejects.toThrow(
-        '작업 실패',
-      );
+      await expect(
+        redisLockService.withLock('test-key', mockFn),
+      ).rejects.toThrow('작업 실패');
     });
 
     it('락이 만료되면 에러를 던진다', async () => {
@@ -65,9 +77,9 @@ describe('RedisService', () => {
       });
 
       // When & Then
-      await expect(redisService.withLock('test-key', mockFn)).rejects.toThrow(
-        'Lock expired for key: lock:test-key',
-      );
+      await expect(
+        redisLockService.withLock('test-key', mockFn),
+      ).rejects.toThrow('Lock expired for key: lock:test-key');
       expect(mockFn).not.toHaveBeenCalled();
     });
 
@@ -79,34 +91,10 @@ describe('RedisService', () => {
       );
 
       // When & Then
-      await expect(redisService.withLock('test-key', mockFn)).rejects.toThrow(
-        'The operation was unable to achieve a quorum',
-      );
+      await expect(
+        redisLockService.withLock('test-key', mockFn),
+      ).rejects.toThrow('The operation was unable to achieve a quorum');
       expect(mockFn).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('getClient', () => {
-    it('Redis 클라이언트를 반환한다', () => {
-      // Given
-      const mockClient = { ping: jest.fn() } as any;
-      (redisService as any).client = mockClient;
-
-      // When
-      const client = redisService.getClient();
-
-      // Then
-      expect(client).toBe(mockClient);
-    });
-  });
-
-  describe('getRedlock', () => {
-    it('Redlock 인스턴스를 반환한다', () => {
-      // When
-      const redlock = redisService.getRedlock();
-
-      // Then
-      expect(redlock).toBe(mockRedlock);
     });
   });
 });
