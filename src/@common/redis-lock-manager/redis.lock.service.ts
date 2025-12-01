@@ -191,15 +191,16 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
         if (channel !== channelName) return;
 
         clearTimeout(timer);
+        this.subscriber.off('pmessage', handler);
         resolve();
       };
 
       // ** 이벤트 리스너 등록
-      this.subscriber.once('pmessage', handler);
+      this.subscriber.on('pmessage', handler);
 
       // ** Resolve Case 2 : waitTimeout 도달시 wait 즉시 종료
       const timer = setTimeout(() => {
-        this.subscriber.removeListener('pmessage', handler);
+        this.subscriber.off('pmessage', handler);
         resolve();
       }, waitTimeout);
     });
