@@ -140,7 +140,6 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
         .eval(extendScript, 1, key, token, ttl)
         .catch((error) => {
           this.logger.error('Error extending lock TTL', error);
-          throw new RedisLockTTLExtentionException(key);
         });
     }, ttl / 3);
   }
