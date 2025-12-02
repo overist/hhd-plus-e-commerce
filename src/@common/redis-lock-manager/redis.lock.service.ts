@@ -8,13 +8,15 @@ import Redis from 'ioredis';
 import Redlock, { ExecutionError } from 'redlock';
 
 /**
- * Redis 서비스 (분산 락 전용)
- * 분산 락을 위한 Redis 클라이언트 관리
+ * Redis Lock 서비스 (분산 락 전용)
+ * Redlock + PUB/SUB 기반 분산 락 관리
  *
- * Redis 분리 구조:
- * - 세션용 Redis (REDIS_SESSION_URL): main.ts에서 express-session과 함께 사용
- * - 분산락용 Redis (REDIS_LOCK_URL): 이 서비스에서 Redlock과 함께 사용 (client, publisher, subscriber)
- * - 캐시용 Redis (REDIS_CACHE_URL): cache.module.ts에서 cache-manager와 함께 사용
+ * Redis 모듈 구조:
+ * - GlobalRedisModule: 범용 Redis 클라이언트 (세션, NoSQL 등)
+ * - GlobalCacheModule: 캐시 전용 (cache-manager + Keyv)
+ * - GlobalRedisLockModule: 분산락 전용 (이 서비스)
+ *
+ * 환경변수: REDIS_URL
  */
 @Injectable()
 export class RedisLockService implements OnModuleInit, OnModuleDestroy {
@@ -35,19 +37,19 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
 
   // 모듈 초기화
   async onModuleInit(): Promise<void> {
-    const lockRedisUrl = process.env.REDIS_LOCK_URL as string;
+    const redisUrl = process.env.REDIS_URL as string;
 
-    this.client = new Redis(lockRedisUrl);
+    this.client = new Redis(redisUrl);
     this.client.on('error', (err) =>
       this.logger.error('Redis Lock client error', err),
     );
 
-    this.publisher = new Redis(lockRedisUrl);
+    this.publisher = new Redis(redisUrl);
     this.publisher.on('error', (err) =>
       this.logger.error('Redis Lock publish error', err),
     );
 
-    this.subscriber = new Redis(lockRedisUrl);
+    this.subscriber = new Redis(redisUrl);
     this.subscriber.setMaxListeners(0);
     this.subscriber.on('error', (err) =>
       this.logger.error('Redis Lock subscribe error', err),

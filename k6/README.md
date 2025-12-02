@@ -113,9 +113,7 @@ docker compose -f docker-compose.stage.yaml ps
 ```
 NAME                       SERVICE         STATUS
 scale-mysql                mysql           running (healthy)
-scale-redis-session        redis-session   running (healthy)
-scale-redis-lock           redis-lock      running (healthy)
-scale-redis-cache          redis-cache     running (healthy)
+scale-redis                redis           running (healthy)
 scale-nginx                nginx           running
 hhplus-e-commerce-app-1    app             running
 hhplus-e-commerce-app-2    app             running
@@ -146,11 +144,8 @@ K6 출력에서 확인할 항목:
 Redis 부하 확인:
 
 ```bash
-# 분산 락 Redis 확인
-docker exec scale-redis-lock redis-cli INFO stats | grep -E "(commands|connections)"
-
-# 세션 Redis 확인
-docker exec scale-redis-session redis-cli INFO stats | grep -E "(commands|connections)"
+# Redis 통계 확인
+docker exec scale-redis redis-cli INFO stats | grep -E "(commands|connections)"
 ```
 
 ### Step 5: 종료

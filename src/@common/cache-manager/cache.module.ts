@@ -5,12 +5,15 @@ import KeyvRedis from '@keyv/redis';
 import { HttpCacheInterceptor } from './http-cache.interceptor';
 
 /**
- * Global Cache Module (캐시 전용 Redis)
+ * Global Cache Module (캐시 전용)
+ * cache-manager + Keyv 기반 캐시 서비스를 제공합니다.
  *
- * Redis 분리 구조:
- * - 세션용 Redis (REDIS_SESSION_URL): main.ts에서 express-session과 함께 사용
- * - 분산락용 Redis (REDIS_LOCK_URL): redis.lock.service.ts에서 Redlock과 함께 사용 (client, publisher, subscriber)
- * - 캐시용 Redis (REDIS_CACHE_URL): 이 모듈에서 cache-manager와 함께 사용
+ * Redis 모듈 구조:
+ * - GlobalRedisModule: 범용 Redis 클라이언트 (세션, NoSQL 등)
+ * - GlobalCacheModule: 캐시 전용 (이 모듈)
+ * - GlobalRedisLockModule: 분산락 전용 (Redlock + PUB/SUB)
+ *
+ * 환경변수: REDIS_URL
  */
 @Global()
 @Module({
@@ -18,11 +21,11 @@ import { HttpCacheInterceptor } from './http-cache.interceptor';
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => {
-        const cacheRedisUrl = process.env.REDIS_CACHE_URL;
+        const redisUrl = process.env.REDIS_URL;
 
-        // Redis 캐시 사용 (REDIS_CACHE_URL이 설정된 경우)
-        if (cacheRedisUrl) {
-          const keyvRedis = new KeyvRedis(cacheRedisUrl);
+        // Redis 캐시 사용 (REDIS_URL이 설정된 경우)
+        if (redisUrl) {
+          const keyvRedis = new KeyvRedis(redisUrl);
           const keyv = new Keyv({ store: keyvRedis, namespace: 'cache' });
 
           return {
