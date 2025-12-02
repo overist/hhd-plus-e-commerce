@@ -62,6 +62,7 @@ sequenceDiagram
 5. **락 해제 + 알림**: Server A 작업 완료 → Lua 스크립트로 `DEL` + `PUBLISH`를 원자적으로 실행합니다.
 6. **재획득**: Server B는 이벤트를 수신 후 `withLock`을 재시도하여 락을 획득하고 작업을 수행합니다.
 7. **모듈 종료 시 구독 해제**: `onModuleDestroy`에서 `subscriber.quit()`를 호출하여 자동으로 구독이 해제됩니다.
+8. **최대 대기 시간 제한**: `MAX_WAIT_TIME`(10초)을 초과하면 `RedisLockWaitTimeoutException`을 발생시켜 메모리 누수를 방지합니다.
 
 이 과정을 통해 서버 수가 늘어나도 Redis에 대한 불필요한 재시도(폴링)를 최소화하면서 순차 실행이 보장됩니다.
 
@@ -73,14 +74,16 @@ sequenceDiagram
 - **Pub/Sub 패턴 구독**: 모듈 초기화 시 `PSUBSCRIBE lock:release:*`로 모든 락 해제 이벤트를 구독하여, 실패 시 즉시 재시도하지 않고 이벤트 기반으로 기다려 Redis 부하 완화
 - **이벤트 리스너 등록/해제**: `waitForUnlock` 내에서 `pmessage` 이벤트 리스너를 등록하고, 이벤트 수신 또는 타임아웃 시 리스너를 해제하여 메모리 누수 방지
 - **키 네임스페이스**: `lock:{key}` / `lock:release:{key}` 구조로 리소스별로 독립적인 락/이벤트 흐름 유지
+- **MAX_WAIT_TIME 제한**: 전체 `withLock` 대기 시간이 10초를 초과하면 예외를 발생시켜 무한 대기 및 메모리 누수 방지
 
-## Edge Case : 5초 내외 무거운 로직 실행 시
+## 5초 내외 무거운 로직 실행 시
 
-```
+```typescript
 await this.withLock('coupon:issue:1', fn, {
-  ttl: 5000,        // 락은 5초 후 자동 만료
-  waitTimeout: 5000 // 대기자는 최대 5초간 이벤트 기다림
+  ttl: 5000, // 락은 5초 후 자동 만료 (기본값)
+  waitTimeout: 1000, // 대기자는 최대 1초간 이벤트 기다림 (기본값)
 });
+// 참고: 전체 withLock 대기 상한은 MAX_WAIT_TIME = 10초
 ```
 
 ```
@@ -89,12 +92,16 @@ await this.withLock('coupon:issue:1', fn, {
 0.0       락 획득 (TTL=5s)
           Watchdog 시작 (1.67s 주기)
 0.0                              락 대기 시작
+1.0                              waitTimeout 만료 → 재시도
+1.0                              락 획득 시도 → 실패 (A가 보유 중)
+1.0                              다시 대기...
 1.67      Watchdog: PEXPIRE ✅
           (TTL 5초로 연장)
+2.0                              waitTimeout 만료 → 재시도
+2.0                              락 획득 시도 → 실패
+3.0                              waitTimeout 만료 → 재시도
 3.33      Watchdog: PEXPIRE ✅
-5.0       작업 계속 중...        waitTimeout 만료 → 재시도
-5.0       Watchdog: PEXPIRE ✅   락 획득 시도 → 실패 (A가 연장함)
-5.0                              다시 대기...
+5.0       Watchdog: PEXPIRE ✅
 5.5       작업 완료, 락 해제
 5.5                              Pub/Sub 수신 → 락 획득
 ```
