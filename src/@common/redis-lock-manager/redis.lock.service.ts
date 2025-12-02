@@ -58,7 +58,7 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
 
     // Redlock 인스턴스 초기화
     if (!this.redlock) {
-      this.redlock = new Redlock([this.client] as any, {
+      this.redlock = new Redlock([this.client], {
         retryCount: 0, // 락 획득 실패시 최대 재시도 횟수 (PUB/SUB 활용시 불필요)
         retryDelay: 100, // 기준 재시도 간격 (ms)
         retryJitter: 50, // 기준 재시도 간격 +- (ms)

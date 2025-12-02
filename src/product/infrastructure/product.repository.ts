@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+  product_options,
+  product_popularity_snapshot,
+  products,
+} from '@prisma/client';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
   IProductRepository,
@@ -81,7 +86,7 @@ export class ProductRepository implements IProductRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): Product {
+  private mapToDomain(record: products): Product {
     const maybeDecimal = record.price as { toNumber?: () => number };
     const price =
       typeof maybeDecimal?.toNumber === 'function'
@@ -119,7 +124,7 @@ export class ProductOptionRepository implements IProductOptionRepository {
 
     // 트랜잭션 컨텍스트가 있으면 FOR UPDATE 사용
     if (tx) {
-      const recordList: any[] =
+      const recordList: product_options[] =
         await tx.$queryRaw`SELECT * FROM product_options WHERE id = ${id} FOR UPDATE`;
       const record = recordList.length > 0 ? recordList[0] : null;
       return record ? this.mapToDomain(record) : null;
@@ -185,7 +190,7 @@ export class ProductOptionRepository implements IProductOptionRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): ProductOption {
+  private mapToDomain(record: product_options): ProductOption {
     return new ProductOption(
       record.id,
       record.product_id,
@@ -277,7 +282,9 @@ export class ProductPopularitySnapshotRepository
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): ProductPopularitySnapshot {
+  private mapToDomain(
+    record: product_popularity_snapshot,
+  ): ProductPopularitySnapshot {
     const maybeDecimal = record.price as { toNumber?: () => number };
     const price =
       typeof maybeDecimal?.toNumber === 'function'

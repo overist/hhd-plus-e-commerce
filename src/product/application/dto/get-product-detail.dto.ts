@@ -35,7 +35,7 @@ export class ProductOptionResult {
 export class GetProductDetailResult {
   productId: number;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
   category: string;
   isAvailable: boolean;

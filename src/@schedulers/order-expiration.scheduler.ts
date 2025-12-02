@@ -5,6 +5,7 @@ import {
   IOrderItemRepository,
 } from '@/order/domain/interfaces/order.repository.interface';
 import { IProductOptionRepository } from '@/product/domain/interfaces/product.repository.interface';
+import { Order } from '@/order/domain/entities/order.entity';
 
 /**
  * Order Expiration Scheduler
@@ -34,7 +35,7 @@ export class OrderExpirationScheduler {
       this.logger.log('만료된 주문 검색 시작');
 
       // 만료된 PENDING 주문 조회 (모든 사용자의 주문 조회)
-      const allOrders: any[] = [];
+      const allOrders: Order[] = [];
       // Repository가 findAll 메서드를 제공하지 않으므로, 임시로 여러 userId 조회
       // 실제로는 OrderRepository에 findExpiredOrders 같은 메서드가 필요
       for (let userId = 1; userId <= 1000; userId++) {
