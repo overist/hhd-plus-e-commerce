@@ -288,7 +288,7 @@ export abstract class ICartRepository {
 ```typescript
 // infrastructure/cart.prisma.repository.ts
 @Injectable()
-export class CartPrismaRepository implements ICartRepository {
+export class CartRepository implements ICartRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   // 트랜잭션 컨텍스트가 있으면 해당 클라이언트 사용
@@ -372,7 +372,7 @@ static fromDomain(cartItem: CartItem, option: ProductOption, product: Product): 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Infrastructure Layer                         │
 │  ┌──────────────────────────────────────────────────────┐      │
-│  │  PrismaRepository (Adapter 구현체)                   │      │
+│  │  Repository (Adapter 구현체)                   │      │
 │  └──────────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────────┘
 ```

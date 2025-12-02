@@ -6,10 +6,10 @@ import {
   IProductPopularitySnapshotRepository,
 } from '@/product/domain/interfaces/product.repository.interface';
 import {
-  ProductPrismaRepository,
+  ProductRepository,
   ProductOptionRepository,
   ProductPopularitySnapshotRepository,
-} from '@/product/infrastructure/product.prisma.repository';
+} from '@/product/infrastructure/product.repository';
 import { ProductController } from '@/product/presentation/product.controller';
 
 // Use Cases
@@ -26,10 +26,10 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
   controllers: [ProductController],
   providers: [
     // Product Repositories
-    ProductPrismaRepository,
+    ProductRepository,
     {
       provide: IProductRepository,
-      useClass: ProductPrismaRepository,
+      useClass: ProductRepository,
     },
     ProductOptionRepository,
     {

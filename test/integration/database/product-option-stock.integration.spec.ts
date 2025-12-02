@@ -4,21 +4,21 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { UserDomainService } from '@/user/domain/services/user.service';
 import {
-  OrderPrismaRepository,
+  OrderRepository,
   OrderItemRepository,
-} from '@/order/infrastructure/order.prisma.repository';
+} from '@/order/infrastructure/order.repository';
 import {
-  ProductPrismaRepository,
+  ProductRepository,
   ProductOptionRepository,
-} from '@/product/infrastructure/product.prisma.repository';
+} from '@/product/infrastructure/product.repository';
 import {
-  UserPrismaRepository,
+  UserRepository,
   UserBalanceChangeLogRepository,
-} from '@/user/infrastructure/user.prisma.repository';
+} from '@/user/infrastructure/user.repository';
 import {
-  CouponPrismaRepository,
+  CouponRepository,
   UserCouponRepository,
-} from '@/coupon/infrastructure/coupon.prisma.repository';
+} from '@/coupon/infrastructure/coupon.repository';
 import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { User } from '@/user/domain/entities/user.entity';
@@ -32,9 +32,9 @@ import {
 describe('동시성 제어 통합 테스트', () => {
   let prismaService: PrismaService;
   let createOrderUseCase: CreateOrderUseCase;
-  let productRepository: ProductPrismaRepository;
+  let productRepository: ProductRepository;
   let productOptionRepository: ProductOptionRepository;
-  let userRepository: UserPrismaRepository;
+  let userRepository: UserRepository;
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
@@ -47,15 +47,15 @@ describe('동시성 제어 통합 테스트', () => {
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
 
-    const orderRepository = new OrderPrismaRepository(prismaService);
+    const orderRepository = new OrderRepository(prismaService);
     const orderItemRepository = new OrderItemRepository(prismaService);
-    productRepository = new ProductPrismaRepository(prismaService);
+    productRepository = new ProductRepository(prismaService);
     productOptionRepository = new ProductOptionRepository(prismaService);
-    userRepository = new UserPrismaRepository(prismaService);
+    userRepository = new UserRepository(prismaService);
     const balanceLogRepository = new UserBalanceChangeLogRepository(
       prismaService,
     );
-    const couponRepository = new CouponPrismaRepository(prismaService);
+    const couponRepository = new CouponRepository(prismaService);
     const userCouponRepository = new UserCouponRepository(prismaService);
     const productPopularitySnapshotRepository = new (class {
       async findAll() {

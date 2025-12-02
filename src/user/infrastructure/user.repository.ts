@@ -13,7 +13,7 @@ import { UserBalanceChangeLog } from '@/user/domain/entities/user-balance-change
  * 동시성 제어: 낙관적 잠금(Optimistic Locking) 사용
  */
 @Injectable()
-export class UserPrismaRepository implements IUserRepository {
+export class UserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**

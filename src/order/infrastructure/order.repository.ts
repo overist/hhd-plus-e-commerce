@@ -13,7 +13,7 @@ import { OrderStatus } from '@/order/domain/entities/order-status.vo';
  * Order Repository Implementation (Prisma)
  */
 @Injectable()
-export class OrderPrismaRepository implements IOrderRepository {
+export class OrderRepository implements IOrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {

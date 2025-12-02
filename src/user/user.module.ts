@@ -8,9 +8,9 @@ import {
   IUserBalanceChangeLogRepository,
 } from '@/user/domain/interfaces/user.repository.interface';
 import {
-  UserPrismaRepository,
+  UserRepository,
   UserBalanceChangeLogRepository,
-} from '@/user/infrastructure/user.prisma.repository';
+} from '@/user/infrastructure/user.repository';
 import { UserController } from '@/user/presentation/user.controller';
 
 /**
@@ -21,10 +21,10 @@ import { UserController } from '@/user/presentation/user.controller';
   controllers: [UserController],
   providers: [
     // User Repositories
-    UserPrismaRepository,
+    UserRepository,
     {
       provide: IUserRepository,
-      useClass: UserPrismaRepository,
+      useClass: UserRepository,
     },
     UserBalanceChangeLogRepository,
     {

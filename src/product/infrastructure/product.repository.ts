@@ -14,7 +14,7 @@ import { ProductPopularitySnapshot } from '@/product/domain/entities/product-pop
  * Product Repository Implementation (Prisma)
  */
 @Injectable()
-export class ProductPrismaRepository implements IProductRepository {
+export class ProductRepository implements IProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {

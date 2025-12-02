@@ -1,7 +1,7 @@
 import {
-  CouponPrismaRepository,
+  CouponRepository,
   UserCouponRepository,
-} from '@/coupon/infrastructure/coupon.prisma.repository';
+} from '@/coupon/infrastructure/coupon.repository';
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
@@ -12,7 +12,7 @@ import {
 
 describe('CouponService Integration Tests', () => {
   let prismaService: PrismaService;
-  let couponRepository: CouponPrismaRepository;
+  let couponRepository: CouponRepository;
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
@@ -24,7 +24,7 @@ describe('CouponService Integration Tests', () => {
 
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
-    couponRepository = new CouponPrismaRepository(prismaService);
+    couponRepository = new CouponRepository(prismaService);
   });
 
   describe('쿠폰 발급 동시성 제어 (Coupon.issuedQuantity)', () => {

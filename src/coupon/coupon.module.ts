@@ -7,9 +7,9 @@ import {
   IUserCouponRepository,
 } from '@/coupon/domain/interfaces/coupon.repository.interface';
 import {
-  CouponPrismaRepository,
+  CouponRepository,
   UserCouponRepository,
-} from '@/coupon/infrastructure/coupon.prisma.repository';
+} from '@/coupon/infrastructure/coupon.repository';
 import { CouponController } from '@/coupon/presentation/coupon.controller';
 
 /**
@@ -20,10 +20,10 @@ import { CouponController } from '@/coupon/presentation/coupon.controller';
   controllers: [CouponController],
   providers: [
     // Coupon Repositories
-    CouponPrismaRepository,
+    CouponRepository,
     {
       provide: ICouponRepository,
-      useClass: CouponPrismaRepository,
+      useClass: CouponRepository,
     },
     UserCouponRepository,
     {

@@ -8,7 +8,7 @@ import { CartItem } from '@/cart/domain/entities/cart-item.entity';
  * Cart Repository Implementation (Prisma)
  */
 @Injectable()
-export class CartPrismaRepository implements ICartRepository {
+export class CartRepository implements ICartRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {

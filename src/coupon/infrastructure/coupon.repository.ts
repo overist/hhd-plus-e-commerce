@@ -13,7 +13,7 @@ import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
  * 동시성 제어: 트랜잭션 컨텍스트에서 FOR UPDATE를 통한 비관적 잠금
  */
 @Injectable()
-export class CouponPrismaRepository implements ICouponRepository {
+export class CouponRepository implements ICouponRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {

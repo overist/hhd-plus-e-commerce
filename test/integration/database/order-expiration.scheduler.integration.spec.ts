@@ -1,13 +1,13 @@
 import { OrderExpirationScheduler } from '@/@schedulers/order-expiration.scheduler';
 import {
-  ProductPrismaRepository,
+  ProductRepository,
   ProductOptionRepository,
-} from '@/product/infrastructure/product.prisma.repository';
-import { UserPrismaRepository } from '@/user/infrastructure/user.prisma.repository';
+} from '@/product/infrastructure/product.repository';
+import { UserRepository } from '@/user/infrastructure/user.repository';
 import {
-  OrderPrismaRepository,
+  OrderRepository,
   OrderItemRepository,
-} from '@/order/infrastructure/order.prisma.repository';
+} from '@/order/infrastructure/order.repository';
 import { Order } from '@/order/domain/entities/order.entity';
 import { OrderItem } from '@/order/domain/entities/order-item.entity';
 import { Product } from '@/product/domain/entities/product.entity';
@@ -24,11 +24,11 @@ import {
 describe('OrderExpirationScheduler Integration Tests', () => {
   let prismaService: PrismaService;
   let scheduler: OrderExpirationScheduler;
-  let orderRepository: OrderPrismaRepository;
+  let orderRepository: OrderRepository;
   let orderItemRepository: OrderItemRepository;
-  let productRepository: ProductPrismaRepository;
+  let productRepository: ProductRepository;
   let productOptionRepository: ProductOptionRepository;
-  let userRepository: UserPrismaRepository;
+  let userRepository: UserRepository;
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
@@ -41,11 +41,11 @@ describe('OrderExpirationScheduler Integration Tests', () => {
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
 
-    orderRepository = new OrderPrismaRepository(prismaService);
+    orderRepository = new OrderRepository(prismaService);
     orderItemRepository = new OrderItemRepository(prismaService);
-    productRepository = new ProductPrismaRepository(prismaService);
+    productRepository = new ProductRepository(prismaService);
     productOptionRepository = new ProductOptionRepository(prismaService);
-    userRepository = new UserPrismaRepository(prismaService);
+    userRepository = new UserRepository(prismaService);
 
     scheduler = new OrderExpirationScheduler(
       orderRepository,
