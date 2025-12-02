@@ -4,8 +4,8 @@ import { AppModule } from './app.module';
 
 // session modules
 import session from 'express-session';
+import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
-import { RedisService } from '@common/redis/redis.service';
 
 // validation and exception modules
 import { ValidationPipe } from '@nestjs/common';
@@ -30,11 +30,16 @@ async function bootstrap() {
     }),
   );
 
-  // Redis Session Store (GlobalRedisModule의 RedisService 사용)
-  const redisService = app.get(RedisService);
+  // Redis Session Store (세션 전용 Redis)
+  const redisClient = createClient({
+    url: process.env.REDIS_URL as string,
+  });
+  await redisClient.connect().catch((err) => {
+    console.error('Redis Session connection error:', err);
+  });
   app.use(
     session({
-      store: new RedisStore({ client: redisService.getClient() as any }),
+      store: new RedisStore({ client: redisClient }),
       secret: process.env.SESSION_SECRET as string,
       cookie: { maxAge: 12 * 60 * 60 * 1000 },
     }),

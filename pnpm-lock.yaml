@@ -35,9 +35,6 @@ importers:
       '@prisma/client':
         specifier: ^6.19.0
         version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
-      '@types/express-session':
-        specifier: ^1.18.2
-        version: 1.18.2
       async-mutex:
         specifier: ^0.5.0
         version: 0.5.0
@@ -102,6 +99,9 @@ importers:
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.5
+      '@types/express-session':
+        specifier: ^1.18.2
+        version: 1.18.2
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
