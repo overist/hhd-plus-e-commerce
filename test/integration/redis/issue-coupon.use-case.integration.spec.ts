@@ -3,9 +3,9 @@ import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service'
 import { IssueCouponUseCase } from '@/coupon/application/issue-coupon.use-case';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import {
-  CouponPrismaRepository,
+  CouponRepository,
   UserCouponRepository,
-} from '@/coupon/infrastructure/coupon.prisma.repository';
+} from '@/coupon/infrastructure/coupon.repository';
 import {
   ICouponRepository,
   IUserCouponRepository,
@@ -31,7 +31,7 @@ describe('IssueCouponUseCase 동시성 통합 테스트', () => {
     redisLockService = await setupRedisForTest();
 
     // Repository 인스턴스 생성
-    couponRepository = new CouponPrismaRepository(prismaService);
+    couponRepository = new CouponRepository(prismaService);
     userCouponRepository = new UserCouponRepository(prismaService);
 
     // Domain Service 인스턴스 생성

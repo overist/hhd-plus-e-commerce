@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { cart_items, Prisma } from '@prisma/client';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { ICartRepository } from '@/cart/domain/interfaces/cart.repository.interface';
 import { CartItem } from '@/cart/domain/entities/cart-item.entity';
@@ -8,7 +8,7 @@ import { CartItem } from '@/cart/domain/entities/cart-item.entity';
  * Cart Repository Implementation (Prisma)
  */
 @Injectable()
-export class CartPrismaRepository implements ICartRepository {
+export class CartRepository implements ICartRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {
@@ -85,7 +85,7 @@ export class CartPrismaRepository implements ICartRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): CartItem {
+  private mapToDomain(record: cart_items): CartItem {
     return new CartItem(
       Number(record.id),
       record.user_id,

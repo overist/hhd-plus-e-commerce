@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { order_items, orders, Prisma } from '@prisma/client';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
   IOrderItemRepository,
@@ -13,7 +13,7 @@ import { OrderStatus } from '@/order/domain/entities/order-status.vo';
  * Order Repository Implementation (Prisma)
  */
 @Injectable()
-export class OrderPrismaRepository implements IOrderRepository {
+export class OrderRepository implements IOrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {
@@ -26,7 +26,7 @@ export class OrderPrismaRepository implements IOrderRepository {
 
     // 트랜잭션 컨텍스트가 있으면 FOR UPDATE 사용
     if (tx) {
-      const recordList: any[] =
+      const recordList: orders[] =
         await tx.$queryRaw`SELECT * FROM orders WHERE id = ${id} FOR UPDATE`;
       const record = recordList.length > 0 ? recordList[0] : null;
       return record ? this.mapToDomain(record) : null;
@@ -98,7 +98,7 @@ export class OrderPrismaRepository implements IOrderRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): Order {
+  private mapToDomain(record: orders): Order {
     const toNumber = (value: any): number => {
       const maybeDecimal = value as { toNumber?: () => number };
       return typeof maybeDecimal?.toNumber === 'function'
@@ -177,7 +177,7 @@ export class OrderItemRepository implements IOrderItemRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): OrderItem {
+  private mapToDomain(record: order_items): OrderItem {
     const toNumber = (value: any): number => {
       const maybeDecimal = value as { toNumber?: () => number };
       return typeof maybeDecimal?.toNumber === 'function'

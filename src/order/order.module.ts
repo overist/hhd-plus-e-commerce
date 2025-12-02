@@ -8,9 +8,9 @@ import {
   IOrderItemRepository,
 } from '@/order/domain/interfaces/order.repository.interface';
 import {
-  OrderPrismaRepository,
+  OrderRepository,
   OrderItemRepository,
-} from '@/order/infrastructure/order.prisma.repository';
+} from '@/order/infrastructure/order.repository';
 import { OrderController } from '@/order/presentation/order.controller';
 
 // Use Cases
@@ -28,10 +28,10 @@ import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-
   controllers: [OrderController],
   providers: [
     // Order Repositories (자신의 도메인만)
-    OrderPrismaRepository,
+    OrderRepository,
     {
       provide: IOrderRepository,
-      useClass: OrderPrismaRepository,
+      useClass: OrderRepository,
     },
     OrderItemRepository,
     {

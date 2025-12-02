@@ -7,7 +7,7 @@ export class Product {
   constructor(
     public readonly id: number,
     public name: string,
-    public description: string,
+    public description: string | null,
     public price: number,
     public category: string,
     public isAvailable: boolean,

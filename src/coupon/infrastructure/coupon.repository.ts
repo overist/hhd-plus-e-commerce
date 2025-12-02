@@ -4,7 +4,7 @@ import {
   IUserCouponRepository,
 } from '@/coupon/domain/interfaces/coupon.repository.interface';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
-import { Prisma } from '@prisma/client';
+import { coupons, Prisma, user_coupons } from '@prisma/client';
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
 import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
 
@@ -13,7 +13,7 @@ import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
  * 동시성 제어: 트랜잭션 컨텍스트에서 FOR UPDATE를 통한 비관적 잠금
  */
 @Injectable()
-export class CouponPrismaRepository implements ICouponRepository {
+export class CouponRepository implements ICouponRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private get prismaClient(): Prisma.TransactionClient | PrismaService {
@@ -26,7 +26,7 @@ export class CouponPrismaRepository implements ICouponRepository {
 
     // 트랜잭션 컨텍스트가 있으면 FOR UPDATE 사용
     if (tx) {
-      const recordList: any[] =
+      const recordList: coupons[] =
         await tx.$queryRaw`SELECT * FROM coupons WHERE id = ${id} FOR UPDATE`;
       const record = recordList.length > 0 ? recordList[0] : null;
       return record ? this.mapToDomain(record) : null;
@@ -91,7 +91,7 @@ export class CouponPrismaRepository implements ICouponRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): Coupon {
+  private mapToDomain(record: coupons): Coupon {
     const maybeDecimal = record.discount_rate as { toNumber?: () => number };
     const discountRate =
       typeof maybeDecimal?.toNumber === 'function'
@@ -186,7 +186,7 @@ export class UserCouponRepository implements IUserCouponRepository {
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): UserCoupon {
+  private mapToDomain(record: user_coupons): UserCoupon {
     return new UserCoupon(
       Number(record.id),
       record.user_id,

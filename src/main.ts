@@ -32,7 +32,7 @@ async function bootstrap() {
 
   // Redis Session Store (세션 전용 Redis)
   const redisClient = createClient({
-    url: process.env.REDIS_SESSION_URL as string,
+    url: process.env.REDIS_URL as string,
   });
   await redisClient.connect().catch((err) => {
     console.error('Redis Session connection error:', err);

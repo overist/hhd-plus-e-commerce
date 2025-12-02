@@ -1,19 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, user_balance_change_log, users } from '@prisma/client';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
   IUserRepository,
   IUserBalanceChangeLogRepository,
 } from '../domain/interfaces/user.repository.interface';
 import { User } from '@/user/domain/entities/user.entity';
-import { UserBalanceChangeLog } from '@/user/domain/entities/user-balance-change-log.entity';
+import {
+  BalanceChangeCode,
+  UserBalanceChangeLog,
+} from '@/user/domain/entities/user-balance-change-log.entity';
 
 /**
  * User Repository Implementation (Prisma)
  * 동시성 제어: 낙관적 잠금(Optimistic Locking) 사용
  */
 @Injectable()
-export class UserPrismaRepository implements IUserRepository {
+export class UserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -63,16 +66,16 @@ export class UserPrismaRepository implements IUserRepository {
     }
 
     // 업데이트된 레코드 재조회
-    const refreshed = await this.prismaClient.users.findUnique({
+    const refreshed = (await this.prismaClient.users.findUnique({
       where: { id: user.id },
-    });
+    })) as users;
     return this.mapToDomain(refreshed);
   }
 
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): User {
+  private mapToDomain(record: users): User {
     const maybeDecimal = record.balance as { toNumber?: () => number };
     const balance =
       typeof maybeDecimal?.toNumber === 'function'
@@ -147,7 +150,7 @@ export class UserBalanceChangeLogRepository
   /**
    * Helper 도메인 맵퍼
    */
-  private mapToDomain(record: any): UserBalanceChangeLog {
+  private mapToDomain(record: user_balance_change_log): UserBalanceChangeLog {
     const toNumber = (value: any): number => {
       const maybeDecimal = value as { toNumber?: () => number };
       return typeof maybeDecimal?.toNumber === 'function'
@@ -161,7 +164,7 @@ export class UserBalanceChangeLogRepository
       toNumber(record.amount),
       toNumber(record.before_amount),
       toNumber(record.after_amount),
-      record.code,
+      record.code as BalanceChangeCode,
       record.note,
       record.ref_id ? Number(record.ref_id) : null,
       record.created_at,

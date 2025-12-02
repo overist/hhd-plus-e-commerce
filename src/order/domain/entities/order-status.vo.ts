@@ -1,4 +1,4 @@
-import { DomainException } from '@common/exception';
+import { DomainException, ErrorCode } from '@common/exception';
 
 /**
  * OrderStatus Value Object
@@ -24,7 +24,7 @@ export class OrderStatus {
       case 'EXPIRED':
         return OrderStatus.EXPIRED;
       default:
-        throw new DomainException(`유효하지 않은 주문 상태: ${value}` as any);
+        throw new DomainException(ErrorCode.INVALID_ORDER_STATUS);
     }
   }
 

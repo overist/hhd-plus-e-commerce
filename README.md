@@ -7,10 +7,11 @@ NestJS 기반 이커머스 백엔드 시스템
 - **Framework**: NestJS
 - **Database**: MySQL 8.0 (InnoDB, MVCC)
 - **ORM**: Prisma
-- **Cache/Lock**: Redis (3개 분리 구성)
+- **Cache/Lock**: Redis (통합 구성)
   - Session: 세션 저장 (express-session)
-  - Lock: 분산 락 (Redlock + Pub/Sub)
+  - Lock: 분산 락 (Pub/Sub + TTL 연장)
   - Cache: API 응답 캐시 (@nestjs/cache-manager)
+  - NoSQL: 쿠폰 데이터 조회/저장
 - **Testing**: Jest, Testcontainers
 
 ---
@@ -154,7 +155,7 @@ MySQL InnoDB 기본 격리 수준: **REPEATABLE READ**
 **적용 대상:** 쿠폰 발급 (Scale-out 환경)
 
 ```typescript
-// Redlock + Pub/Sub 기반 분산 락
+// Pub/Sub 기반 분산 락
 const lockKey = `coupon:issue:${couponId}`;
 await this.redisLockService.withLock(lockKey, async () => {
   // 쿠폰 발급 로직
@@ -163,7 +164,6 @@ await this.redisLockService.withLock(lockKey, async () => {
 
 **특징:**
 
-- **Redlock 알고리즘**: 분산 환경에서 안전한 락 획득
 - **Pub/Sub 기반 대기**: Spin Lock 대비 Redis 부하 80% 감소
 - **자동 TTL 연장**: 장기 작업 시 락 만료 방지
 
@@ -254,7 +254,7 @@ pnpm test -- "balance-charge"
 ### 인프라 실행
 
 ```bash
-# Docker Compose로 MySQL + Redis 3개 실행
+# Docker Compose로 MySQL + Redis 실행
 pnpm infra:up
 
 # 인프라 중지
@@ -265,11 +265,9 @@ pnpm infra:down
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Redis 3개 분리 구성                    │
+│                   Redis 통합 구성                        │
 ├─────────────────────────────────────────────────────────┤
-│  :6379  │  Session Redis  │  세션 저장 (express-session)│
-│  :6380  │  Lock Redis     │  분산 락 (Redlock + Pub/Sub)│
-│  :6381  │  Cache Redis    │  API 응답 캐시              │
+│  :6379  │  Redis  │  세션, 캐시, 분산락, NoSQL 통합      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -287,7 +285,7 @@ pnpm infra:up:stage
 │  Nginx (:80)     │  Load Balancer (least_conn)          │
 │  App x N         │  NestJS 서버 (Docker --scale app=N)  │
 │  MySQL (:3306)   │  Primary Database                    │
-│  Redis x 3       │  Session / Lock / Cache              │
+│  Redis (:6379)   │  세션, 캐시, 분산락, NoSQL 통합      │
 └─────────────────────────────────────────────────────────┘
 ```
 

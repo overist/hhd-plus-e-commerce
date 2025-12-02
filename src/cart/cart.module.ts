@@ -5,7 +5,7 @@ import { RemoveCartUseCase } from '@/cart/application/remove-cart.use-case';
 import { CartDomainService } from '@/cart/domain/services/cart.service';
 import { ProductModule } from '../product/product.module';
 import { ICartRepository } from '@/cart/domain/interfaces/cart.repository.interface';
-import { CartPrismaRepository } from '@/cart/infrastructure/cart.prisma.repository';
+import { CartRepository } from '@/cart/infrastructure/cart.repository';
 import { CartController } from '@/cart/presentation/cart.controller';
 
 /**
@@ -17,10 +17,10 @@ import { CartController } from '@/cart/presentation/cart.controller';
   controllers: [CartController],
   providers: [
     // Cart Repository (자신의 도메인만)
-    CartPrismaRepository,
+    CartRepository,
     {
       provide: ICartRepository,
-      useClass: CartPrismaRepository,
+      useClass: CartRepository,
     },
 
     // Domain Service

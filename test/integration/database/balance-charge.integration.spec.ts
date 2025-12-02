@@ -1,9 +1,9 @@
 import { ChargeBalanceUseCase } from '@/user/application/charge-balance.use-case';
 import { UserDomainService } from '@/user/domain/services/user.service';
 import {
-  UserPrismaRepository,
+  UserRepository,
   UserBalanceChangeLogRepository,
-} from '@/user/infrastructure/user.prisma.repository';
+} from '@/user/infrastructure/user.repository';
 import { User } from '@/user/domain/entities/user.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
@@ -15,7 +15,7 @@ import {
 describe('잔액 충전 통합 테스트 (관리자 기능)', () => {
   let prismaService: PrismaService;
   let chargeBalanceUseCase: ChargeBalanceUseCase;
-  let userRepository: UserPrismaRepository;
+  let userRepository: UserRepository;
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
@@ -28,7 +28,7 @@ describe('잔액 충전 통합 테스트 (관리자 기능)', () => {
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
 
-    userRepository = new UserPrismaRepository(prismaService);
+    userRepository = new UserRepository(prismaService);
     const balanceLogRepository = new UserBalanceChangeLogRepository(
       prismaService,
     );
