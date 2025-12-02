@@ -9,7 +9,7 @@ NestJS 기반 이커머스 백엔드 시스템
 - **ORM**: Prisma
 - **Cache/Lock**: Redis (통합 구성)
   - Session: 세션 저장 (express-session)
-  - Lock: 분산 락 (Redlock + Pub/Sub)
+  - Lock: 분산 락 (Pub/Sub + TTL 연장)
   - Cache: API 응답 캐시 (@nestjs/cache-manager)
   - NoSQL: 쿠폰 데이터 조회/저장
 - **Testing**: Jest, Testcontainers
@@ -155,7 +155,7 @@ MySQL InnoDB 기본 격리 수준: **REPEATABLE READ**
 **적용 대상:** 쿠폰 발급 (Scale-out 환경)
 
 ```typescript
-// Redlock + Pub/Sub 기반 분산 락
+// Pub/Sub 기반 분산 락
 const lockKey = `coupon:issue:${couponId}`;
 await this.redisLockService.withLock(lockKey, async () => {
   // 쿠폰 발급 로직
@@ -164,7 +164,6 @@ await this.redisLockService.withLock(lockKey, async () => {
 
 **특징:**
 
-- **Redlock 알고리즘**: 분산 환경에서 안전한 락 획득
 - **Pub/Sub 기반 대기**: Spin Lock 대비 Redis 부하 80% 감소
 - **자동 TTL 연장**: 장기 작업 시 락 만료 방지
 
