@@ -20,4 +20,6 @@ export abstract class IOrderItemRepository {
   abstract findManyByOrderId(orderId: number): Promise<OrderItem[]>;
   abstract create(orderItem: OrderItem): Promise<OrderItem>;
   abstract createMany(orderItems: OrderItem[]): Promise<OrderItem[]>;
+
+  abstract recordSales(orderItems: OrderItem[]): void;
 }

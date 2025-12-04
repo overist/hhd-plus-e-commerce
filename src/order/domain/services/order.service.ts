@@ -119,4 +119,11 @@ export class OrderDomainService {
     const orders = await this.orderRepository.findManyByUserId(userId);
     return orders;
   }
+
+  /**
+   * ANCHOR 인기상품 랭킹 집계
+   */
+  recordSales(orderItems: OrderItem[]): void {
+    this.orderItemRepository.recordSales(orderItems);
+  }
 }

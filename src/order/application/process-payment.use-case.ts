@@ -8,6 +8,7 @@ import {
   ProcessPaymentCommand,
   ProcessPaymentResult,
 } from './dto/process-payment.dto';
+import { OrderItem } from '../domain/entities/order-item.entity';
 
 @Injectable()
 export class ProcessPaymentUseCase {
@@ -28,6 +29,7 @@ export class ProcessPaymentUseCase {
   async execute(cmd: ProcessPaymentCommand): Promise<ProcessPaymentResult> {
     let paymentAmount = 0;
     let appliedUserCouponId: number | null = null;
+    let orderItems: OrderItem[] = [];
 
     try {
       // 1단계: 트랜잭션 - 쿠폰 사용 + 주문 상태 변경 + 재고 확정
@@ -59,7 +61,7 @@ export class ProcessPaymentUseCase {
         await this.orderService.updateOrder(order);
 
         // 재고 확정 차감
-        const orderItems = await this.orderService.getOrderItems(cmd.orderId);
+        orderItems = await this.orderService.getOrderItems(cmd.orderId);
         for (const item of orderItems) {
           await this.productService.confirmPaymentStock(
             item.productOptionId,
@@ -75,6 +77,9 @@ export class ProcessPaymentUseCase {
         cmd.orderId,
         `주문 ${cmd.orderId} 결제`,
       );
+
+      // 비동기로 인기상품 집계 (fire and forget)
+      this.orderService.recordSales(orderItems);
 
       return ProcessPaymentResult.fromData(
         cmd.orderId,
