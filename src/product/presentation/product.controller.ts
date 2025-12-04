@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Query,
   UseGuards,
   UseInterceptors,
   HttpCode,
@@ -99,8 +100,10 @@ export class ProductController {
     description: '상위 상품 조회 성공',
     type: GetTopProductsResponse,
   })
-  async getTopProducts(): Promise<GetTopProductsResponse> {
-    const query = GetTopProductsRequest.toQuery(5);
+  async getTopProducts(
+    @Query() dto: GetTopProductsRequest,
+  ): Promise<GetTopProductsResponse> {
+    const query = GetTopProductsRequest.toQuery(dto);
     const result = await this.getTopProductsUseCase.execute(query);
 
     return { data: result };

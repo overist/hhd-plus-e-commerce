@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { OrderDomainService } from '@/order/domain/services/order.service';
 import { ProductModule } from '../product/product.module';
 import { UserModule } from '@/user/user.module';
@@ -24,7 +24,7 @@ import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-
  * 주문 및 결제 관리 모듈
  */
 @Module({
-  imports: [ProductModule, UserModule, CouponModule],
+  imports: [forwardRef(() => ProductModule), UserModule, CouponModule],
   controllers: [OrderController],
   providers: [
     // Order Repositories (자신의 도메인만)
