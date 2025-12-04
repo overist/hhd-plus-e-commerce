@@ -4,11 +4,13 @@ import { execSync } from 'child_process';
 import * as path from 'path';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
+import { RedisService } from '@common/redis/redis.service';
 
 let mysqlContainer: StartedMySqlContainer;
 let redisContainer: StartedRedisContainer;
 let prismaService: PrismaService;
 let redisLockService: RedisLockService;
+let redisService: RedisService;
 
 /**
  * 모든 통합 테스트 시작 전 한 번만 실행
@@ -76,7 +78,7 @@ export async function setupDatabaseTest(): Promise<PrismaService> {
 /**
  * Redis 컨테이너를 시작하고 redisLockService를 반환
  */
-export async function setupRedisForTest(): Promise<redisLockService> {
+export async function setupRedisForTest(): Promise<RedisLockService> {
   if (!redisContainer) {
     // Redis 컨테이너 시작
     redisContainer = await new RedisContainer('redis:8.4.0').start();
@@ -87,6 +89,10 @@ export async function setupRedisForTest(): Promise<redisLockService> {
     // redisLockService 인스턴스 생성 및 onModuleInit 호출
     redisLockService = new RedisLockService();
     await redisLockService.onModuleInit();
+
+    // redisService 인스턴스 생성 및 onModuleInit 호출
+    redisService = new RedisService();
+    await redisService.onModuleInit();
 
     console.log('✅ Redis 컨테이너 시작 완료 (ioredis + Redlock)');
   }
@@ -99,6 +105,13 @@ export async function setupRedisForTest(): Promise<redisLockService> {
  */
 export function getRedisLockService(): RedisLockService {
   return redisLockService;
+}
+
+/**
+ * redisService 인스턴스 반환
+ */
+export function getRedisService(): RedisService {
+  return redisService;
 }
 
 /**
@@ -146,6 +159,16 @@ export async function teardownIntegrationTest(): Promise<void> {
       // 이미 연결이 끊어진 경우 무시
     }
     redisLockService = null as any;
+  }
+
+  // redisService 정리
+  if (redisService) {
+    try {
+      await redisService.onModuleDestroy();
+    } catch {
+      // 이미 연결이 끊어진 경우 무시
+    }
+    redisService = null as any;
   }
 
   if (prismaService) {

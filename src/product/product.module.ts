@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import {
   IProductRepository,
@@ -11,6 +11,7 @@ import {
   ProductPopularitySnapshotRepository,
 } from '@/product/infrastructure/product.repository';
 import { ProductController } from '@/product/presentation/product.controller';
+import { OrderModule } from '@/order/order.module';
 
 // Use Cases
 import { GetProductsUseCase } from '@/product/application/get-products.use-case';
@@ -23,6 +24,7 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
  * 상품 관련 기능 모듈
  */
 @Module({
+  imports: [forwardRef(() => OrderModule)],
   controllers: [ProductController],
   providers: [
     // Product Repositories

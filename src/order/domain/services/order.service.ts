@@ -119,4 +119,56 @@ export class OrderDomainService {
     const orders = await this.orderRepository.findManyByUserId(userId);
     return orders;
   }
+
+  /**
+   * ANCHOR 인기상품 랭킹 집계
+   */
+  recordSales(orderItems: OrderItem[]): void {
+    this.orderItemRepository.recordSales(orderItems);
+  }
+
+  /**
+   * ANCHOR N일간 인기상품 랭킹 조회
+   */
+  async getSalesRankingDays(
+    count: number,
+    days: number = 3,
+  ): Promise<Array<{ productOptionId: number; salesCount: number }>> {
+    const MAX_DATE_RANGE_DAYS = 30;
+    if (days <= 0 || days > MAX_DATE_RANGE_DAYS) {
+      throw new DomainException(ErrorCode.INVALID_ARGUMENT);
+    }
+
+    const aggregateMap: Map<number, number> = new Map();
+
+    // dateRangeDays 일 수만큼 반복하여 각 날짜의 랭킹 조회
+    const rankPromises: Promise<
+      Array<{ productOptionId: number; salesCount: number }>
+    >[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const YYYYMMDD = date.toISOString().split('T')[0].replace(/-/g, '');
+      rankPromises.push(this.orderItemRepository.findRankByDate(YYYYMMDD));
+    }
+
+    const ranks = await Promise.all(rankPromises);
+
+    // 모든 랭킹 데이터 집계
+    for (const rank of ranks) {
+      for (const { productOptionId, salesCount } of rank) {
+        const currentCount = aggregateMap.get(productOptionId) || 0;
+        aggregateMap.set(productOptionId, currentCount + salesCount);
+      }
+    }
+
+    const aggregatedRanks = Array.from(aggregateMap.entries()).map(
+      ([productOptionId, salesCount]) => ({ productOptionId, salesCount }),
+    );
+
+    aggregatedRanks.sort((a, b) => b.salesCount - a.salesCount);
+
+    return aggregatedRanks.slice(0, count);
+  }
 }

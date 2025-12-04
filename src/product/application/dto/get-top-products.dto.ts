@@ -5,6 +5,7 @@ import { ProductPopularitySnapshot } from '@/product/domain/entities/product-pop
  */
 export class GetTopProductsQuery {
   count: number;
+  dateRangeDays: number;
 }
 
 /**

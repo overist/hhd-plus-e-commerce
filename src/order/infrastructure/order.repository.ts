@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { order_items, orders, Prisma } from '@prisma/client';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import {
@@ -8,6 +8,7 @@ import {
 import { Order } from '@/order/domain/entities/order.entity';
 import { OrderItem } from '@/order/domain/entities/order-item.entity';
 import { OrderStatus } from '@/order/domain/entities/order-status.vo';
+import { RedisService } from '@common/redis/redis.service';
 
 /**
  * Order Repository Implementation (Prisma)
@@ -127,10 +128,18 @@ export class OrderRepository implements IOrderRepository {
  */
 @Injectable()
 export class OrderItemRepository implements IOrderItemRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
+  private static readonly SALES_RANKING_PREFIX = 'data:products:sales-rank';
+  private readonly logger = new Logger(OrderItemRepository.name);
   private get prismaClient(): Prisma.TransactionClient | PrismaService {
     return this.prisma.getClient();
+  }
+  private get redisClient() {
+    return this.redisService.getClient();
   }
 
   // ANCHOR findManyByOrderId
@@ -195,5 +204,49 @@ export class OrderItemRepository implements IOrderItemRepository {
       toNumber(record.subtotal),
       record.created_at,
     );
+  }
+
+  /**
+   * ANCHOR 인기상품 랭킹 집계
+   */
+  recordSales(orderItems: OrderItem[]): void {
+    const YYYYMMDD = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const key = `${OrderItemRepository.SALES_RANKING_PREFIX}:${YYYYMMDD}`;
+
+    // 비동기로 각 상품의 판매량 증가 (fire-and-forget)
+    Promise.all(
+      orderItems.map((item) => {
+        this.redisClient.zincrby(
+          key,
+          item.quantity,
+          item.productOptionId.toString(),
+        );
+        this.redisClient.expire(key, 60 * 60 * 24 * 31); // 31일
+      }),
+    ).catch((error) => {
+      this.logger.error(
+        `인기상품 랭킹 업데이트 실패 - key: ${key}`,
+        error instanceof Error ? error.stack : error,
+      );
+    });
+  }
+
+  /**
+   * ANCHOR 날짜별 인기상품 랭킹 조회
+   */
+  async findRankByDate(
+    YYYYMMDD: string,
+  ): Promise<{ productOptionId: number; salesCount: number }[]> {
+    const key = `${OrderItemRepository.SALES_RANKING_PREFIX}:${YYYYMMDD}`;
+    const results = await this.redisClient.zrevrange(key, 0, -1, 'WITHSCORES');
+
+    const rankings: { productOptionId: number; salesCount: number }[] = [];
+    for (let i = 0; i < results.length; i += 2) {
+      rankings.push({
+        productOptionId: Number(results[i]),
+        salesCount: Number(results[i + 1]),
+      });
+    }
+    return rankings;
   }
 }
