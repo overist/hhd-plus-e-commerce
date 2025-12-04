@@ -174,4 +174,96 @@ export class CouponRedisService {
         return { success: false, errorCode: 'COUPON_NOT_FOUND' };
     }
   }
+
+  /**
+   * ANCHOR 쿠폰 등록 - 쿠폰을 Redis에 캐싱
+   */
+  async cacheCoupon(coupon: CachedCoupon): Promise<void> {
+    const key = `${CouponRedisService.COUPON_KEY_PREFIX}:${coupon.id}`;
+
+    await this.redisClient.hset(key, {
+      id: coupon.id.toString(),
+      name: coupon.name,
+      discountRate: coupon.discountRate.toString(),
+      totalQuantity: coupon.totalQuantity.toString(),
+      issuedQuantity: coupon.issuedQuantity.toString(),
+      expiredAt: coupon.expiredAt.getTime().toString(),
+      createdAt: coupon.createdAt.getTime().toString(),
+      updatedAt: coupon.updatedAt.getTime().toString(),
+    });
+
+    this.logger.log(`쿠폰 Redis 캐싱 완료 - couponId: ${coupon.id}`);
+  }
+
+  /**
+   * ANCHOR 쿠폰 조회 - Redis에서 쿠폰 조회
+   */
+  async getCachedCoupon(couponId: number): Promise<CachedCoupon | null> {
+    const key = `${CouponRedisService.COUPON_KEY_PREFIX}:${couponId}`;
+    const data = await this.redisClient.hgetall(key);
+
+    if (!data || Object.keys(data).length === 0) {
+      return null;
+    }
+
+    return {
+      id: parseInt(data.id),
+      name: data.name,
+      discountRate: parseFloat(data.discountRate),
+      totalQuantity: parseInt(data.totalQuantity),
+      issuedQuantity: parseInt(data.issuedQuantity),
+      expiredAt: new Date(parseInt(data.expiredAt)),
+      createdAt: new Date(parseInt(data.createdAt)),
+      updatedAt: new Date(parseInt(data.updatedAt)),
+    };
+  }
+
+  /**
+   * ANCHOR 유저 쿠폰 조회 - Redis에서 유저 쿠폰 조회
+   */
+  async getCachedUserCoupons(userId: number): Promise<CachedUserCoupon[]> {
+    const pattern = `${CouponRedisService.USER_COUPON_KEY_PREFIX}:*:${userId}`;
+    const keys = await this.redisClient.keys(pattern);
+    const userCoupons: CachedUserCoupon[] = [];
+
+    for (const key of keys) {
+      const data = await this.redisClient.hgetall(key);
+      if (data && Object.keys(data).length > 0) {
+        userCoupons.push({
+          couponId: parseInt(data.couponId),
+          userId,
+          orderId: data.orderId ? parseInt(data.orderId) : null,
+          createdAt: new Date(parseInt(data.createdAt)),
+          usedAt: data.usedAt ? new Date(parseInt(data.usedAt)) : null,
+          expiredAt: new Date(parseInt(data.expiredAt)),
+        });
+      }
+    }
+
+    return userCoupons;
+  }
+
+  /**
+   * ANCHOR 사용자 쿠폰 조회 - Redis에서 사용자 쿠폰 조회
+   */
+  async getCachedUserCoupon(
+    userId: number,
+    couponId: number,
+  ): Promise<CachedUserCoupon | null> {
+    const key = `${CouponRedisService.USER_COUPON_KEY_PREFIX}:${couponId}:${userId}`;
+    const data = await this.redisClient.hgetall(key);
+
+    if (!data || Object.keys(data).length === 0) {
+      return null;
+    }
+
+    return {
+      couponId: parseInt(data.couponId),
+      userId,
+      orderId: data.orderId ? parseInt(data.orderId) : null,
+      createdAt: new Date(parseInt(data.createdAt)),
+      usedAt: data.usedAt ? new Date(parseInt(data.usedAt)) : null,
+      expiredAt: new Date(parseInt(data.expiredAt)),
+    };
+  }
 }
