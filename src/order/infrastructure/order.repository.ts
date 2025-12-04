@@ -230,4 +230,23 @@ export class OrderItemRepository implements IOrderItemRepository {
       );
     });
   }
+
+  /**
+   * ANCHOR 날짜별 인기상품 랭킹 조회
+   */
+  async findRankByDate(
+    YYYYMMDD: string,
+  ): Promise<{ productOptionId: number; salesCount: number }[]> {
+    const key = `${OrderItemRepository.SALES_RANKING_PREFIX}:${YYYYMMDD}`;
+    const results = await this.redisClient.zrevrange(key, 0, -1, 'WITHSCORES');
+
+    const rankings: { productOptionId: number; salesCount: number }[] = [];
+    for (let i = 0; i < results.length; i += 2) {
+      rankings.push({
+        productOptionId: Number(results[i]),
+        salesCount: Number(results[i + 1]),
+      });
+    }
+    return rankings;
+  }
 }

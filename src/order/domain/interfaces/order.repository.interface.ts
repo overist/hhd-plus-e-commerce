@@ -22,4 +22,7 @@ export abstract class IOrderItemRepository {
   abstract createMany(orderItems: OrderItem[]): Promise<OrderItem[]>;
 
   abstract recordSales(orderItems: OrderItem[]): void;
+  abstract findRankByDate(
+    date: string,
+  ): Promise<{ productOptionId: number; salesCount: number }[]>;
 }
