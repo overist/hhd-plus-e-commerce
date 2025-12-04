@@ -24,14 +24,18 @@ import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { User } from '@/user/domain/entities/user.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
+import { RedisService } from '@common/redis/redis.service';
 import {
   setupDatabaseTest,
+  setupRedisForTest,
+  getRedisService,
   cleanupDatabase,
   teardownIntegrationTest,
 } from '../setup';
 
 describe('결제 처리 통합 테스트 (US-009)', () => {
   let prismaService: PrismaService;
+  let redisService: RedisService;
   let createOrderUseCase: CreateOrderUseCase;
   let processPaymentUseCase: ProcessPaymentUseCase;
   let orderRepository: OrderRepository;
@@ -41,6 +45,8 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
+    await setupRedisForTest();
+    redisService = getRedisService();
   }, 60000); // 60초 타임아웃
 
   afterAll(async () => {
@@ -51,7 +57,10 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
     await cleanupDatabase(prismaService);
 
     orderRepository = new OrderRepository(prismaService);
-    const orderItemRepository = new OrderItemRepository(prismaService);
+    const orderItemRepository = new OrderItemRepository(
+      prismaService,
+      redisService,
+    );
     productRepository = new ProductRepository(prismaService);
     productOptionRepository = new ProductOptionRepository(prismaService);
     userRepository = new UserRepository(prismaService);
