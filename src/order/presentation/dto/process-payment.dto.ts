@@ -24,7 +24,7 @@ export class ProcessPaymentRequest {
   @IsInt()
   @IsPositive()
   @IsOptional()
-  userCouponId?: number;
+  couponId?: number;
 
   static toCommand(
     orderId: number,
@@ -33,7 +33,7 @@ export class ProcessPaymentRequest {
     const command = new ProcessPaymentCommand();
     command.orderId = orderId;
     command.userId = dto.userId;
-    command.userCouponId = dto.userCouponId;
+    command.couponId = dto.couponId;
     return command;
   }
 }
