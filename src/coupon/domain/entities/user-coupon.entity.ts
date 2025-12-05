@@ -11,9 +11,9 @@ export class UserCoupon {
     public readonly userId: number,
     public readonly couponId: number,
     public orderId: number | null,
-    public readonly createdAt: Date,
+    public createdAt: Date = new Date(),
     public usedAt: Date | null,
-    public readonly expiredAt: Date = new Date(),
+    public expiredAt: Date,
     public updatedAt: Date = new Date(),
   ) {}
 

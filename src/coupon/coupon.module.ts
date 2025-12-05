@@ -10,6 +10,7 @@ import {
   CouponRepository,
   UserCouponRepository,
 } from '@/coupon/infrastructure/coupon.repository';
+import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { CouponController } from '@/coupon/presentation/coupon.controller';
 
 /**
@@ -31,6 +32,9 @@ import { CouponController } from '@/coupon/presentation/coupon.controller';
       useClass: UserCouponRepository,
     },
 
+    // Infrastructure Service (Redis)
+    CouponRedisService,
+
     // Domain Service
     CouponDomainService,
 
@@ -38,6 +42,11 @@ import { CouponController } from '@/coupon/presentation/coupon.controller';
     IssueCouponUseCase,
     GetUserCouponsUseCase,
   ],
-  exports: [CouponDomainService, ICouponRepository, IUserCouponRepository],
+  exports: [
+    CouponDomainService,
+    CouponRedisService,
+    ICouponRepository,
+    IUserCouponRepository,
+  ],
 })
 export class CouponModule {}

@@ -3,6 +3,7 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { OrderDomainService } from '@/order/domain/services/order.service';
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
+import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { UserDomainService } from '@/user/domain/services/user.service';
 import {
   OrderRepository,
@@ -94,6 +95,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       couponRepository,
       userCouponRepository,
     );
+    const couponRedisService = new CouponRedisService(redisService);
     const userService = new UserDomainService(
       userRepository,
       balanceLogRepository,
@@ -111,6 +113,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       orderService,
       productService,
       couponService,
+      couponRedisService,
       userService,
       prismaService,
     );

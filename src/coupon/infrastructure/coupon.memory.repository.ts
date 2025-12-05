@@ -120,4 +120,13 @@ export class UserCouponRepository implements IUserCouponRepository {
     this.userCoupons.set(userCoupon.id, userCoupon);
     return userCoupon;
   }
+
+  // ANCHOR userCoupon.deleteByOrderId
+  async deleteByOrderId(orderId: number): Promise<void> {
+    for (const [id, userCoupon] of this.userCoupons.entries()) {
+      if (userCoupon.orderId === orderId) {
+        this.userCoupons.delete(id);
+      }
+    }
+  }
 }

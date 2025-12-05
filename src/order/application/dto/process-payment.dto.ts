@@ -6,7 +6,7 @@ import { User } from '@/user/domain/entities/user.entity';
 export class ProcessPaymentCommand {
   orderId: number;
   userId: number;
-  userCouponId?: number;
+  couponId?: number;
 }
 
 /**

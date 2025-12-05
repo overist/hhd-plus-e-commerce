@@ -183,6 +183,13 @@ export class UserCouponRepository implements IUserCouponRepository {
     return this.mapToDomain(updated);
   }
 
+  // ANCHOR userCoupon.deleteByOrderId
+  async deleteByOrderId(orderId: number): Promise<void> {
+    await this.prismaClient.user_coupons.deleteMany({
+      where: { order_id: BigInt(orderId) },
+    });
+  }
+
   /**
    * Helper 도메인 맵퍼
    */
