@@ -129,11 +129,12 @@ function issueCoupon(userId) {
 
   const success = check(res, {
     'coupon issue status is 201': (r) => r.status === 201,
-    'coupon issue returns userCouponId': (r) => {
+    'coupon issue returns valid response': (r) => {
       try {
         const body = JSON.parse(r.body);
         // 응답 구조: { userCouponId, couponName, discountRate, expiredAt }
-        return Boolean(body?.userCouponId);
+        // Redis 기반 발급 시 userCouponId는 0일 수 있음
+        return 'userCouponId' in body && Boolean(body?.couponName);
       } catch (err) {
         console.error('Failed to parse coupon issue response body', err);
         return false;
