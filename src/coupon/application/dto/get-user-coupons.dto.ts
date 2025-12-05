@@ -1,5 +1,9 @@
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
 import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
+import {
+  CachedCoupon,
+  CachedUserCoupon,
+} from '@/coupon/infrastructure/coupon.redis.service';
 
 /**
  * 애플리케이션 레이어 DTO: GetUserCoupons 요청
@@ -12,7 +16,7 @@ export class GetUserCouponsQuery {
  * 애플리케이션 레이어 DTO: GetUserCoupons 응답
  */
 export class GetUserCouponsResult {
-  userCouponId: number;
+  couponId: number;
   couponName: string;
   discountRate: number;
   expiredAt: Date;
@@ -22,7 +26,19 @@ export class GetUserCouponsResult {
     coupon: Coupon,
   ): GetUserCouponsResult {
     const dto = new GetUserCouponsResult();
-    dto.userCouponId = userCoupon.id;
+    dto.couponId = userCoupon.couponId;
+    dto.couponName = coupon.name;
+    dto.discountRate = coupon.discountRate;
+    dto.expiredAt = coupon.expiredAt;
+    return dto;
+  }
+
+  static fromCache(
+    userCoupon: CachedUserCoupon,
+    coupon: CachedCoupon,
+  ): GetUserCouponsResult {
+    const dto = new GetUserCouponsResult();
+    dto.couponId = userCoupon.couponId;
     dto.couponName = coupon.name;
     dto.discountRate = coupon.discountRate;
     dto.expiredAt = coupon.expiredAt;

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
+import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import {
   GetUserCouponsQuery,
   GetUserCouponsResult,
@@ -7,28 +7,33 @@ import {
 
 @Injectable()
 export class GetUserCouponsUseCase {
-  constructor(private readonly couponService: CouponDomainService) {}
+  constructor(private readonly couponRedisService: CouponRedisService) {}
 
   /**
    * ANCHOR 사용자 보유 쿠폰 조회 뷰 반환
-   *
+   * Redis 캐시에서 사용자 쿠폰 목록을 조회합니다.
    */
   async execute(query: GetUserCouponsQuery): Promise<GetUserCouponsResult[]> {
-    const userCoupons = await this.couponService.getUserCoupons(query.userId);
+    const userCoupons = await this.couponRedisService.getCachedUserCoupons(
+      query.userId,
+    );
 
     if (userCoupons.length === 0) {
       return [];
     }
 
-    const couponIds = [...new Set(userCoupons.map((uc) => uc.couponId))];
+    const results: GetUserCouponsResult[] = [];
 
-    // ✅ N번 쿼리 → 1번 쿼리로 개선 (IN 절 활용)
-    const coupons = await this.couponService.getCouponsByIds(couponIds);
-    const couponMap = new Map(coupons.map((c) => [c.id, c]));
+    for (const userCoupon of userCoupons) {
+      const coupon = await this.couponRedisService.getCachedCoupon(
+        userCoupon.couponId,
+      );
 
-    return userCoupons.map((userCoupon) => {
-      const coupon = couponMap.get(userCoupon.couponId)!;
-      return GetUserCouponsResult.fromDomain(userCoupon, coupon);
-    });
+      if (coupon) {
+        results.push(GetUserCouponsResult.fromCache(userCoupon, coupon));
+      }
+    }
+
+    return results;
   }
 }

@@ -70,6 +70,14 @@ export class CouponDomainService {
   }
 
   /**
+   * ANCHOR 주문 ID로 사용자 쿠폰 삭제
+   * 보상 트랜잭션에서 사용 (결제 실패 시 DB 쿠폰 기록 삭제)
+   */
+  async deleteUserCouponByOrderId(orderId: number): Promise<void> {
+    await this.userCouponRepository.deleteByOrderId(orderId);
+  }
+
+  /**
    * ANCHOR 쿠폰 발급
    */
   async issueCouponToUser(userId: number, coupon: Coupon): Promise<UserCoupon> {

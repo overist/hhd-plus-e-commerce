@@ -3,6 +3,7 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { OrderDomainService } from '@/order/domain/services/order.service';
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
+import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { UserDomainService } from '@/user/domain/services/user.service';
 import {
   OrderRepository,
@@ -24,14 +25,18 @@ import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { User } from '@/user/domain/entities/user.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
+import { RedisService } from '@common/redis/redis.service';
 import {
   setupDatabaseTest,
+  setupRedisForTest,
+  getRedisService,
   cleanupDatabase,
   teardownIntegrationTest,
 } from '../setup';
 
 describe('결제 처리 통합 테스트 (US-009)', () => {
   let prismaService: PrismaService;
+  let redisService: RedisService;
   let createOrderUseCase: CreateOrderUseCase;
   let processPaymentUseCase: ProcessPaymentUseCase;
   let orderRepository: OrderRepository;
@@ -41,6 +46,8 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
+    await setupRedisForTest();
+    redisService = getRedisService();
   }, 60000); // 60초 타임아웃
 
   afterAll(async () => {
@@ -51,7 +58,10 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
     await cleanupDatabase(prismaService);
 
     orderRepository = new OrderRepository(prismaService);
-    const orderItemRepository = new OrderItemRepository(prismaService);
+    const orderItemRepository = new OrderItemRepository(
+      prismaService,
+      redisService,
+    );
     productRepository = new ProductRepository(prismaService);
     productOptionRepository = new ProductOptionRepository(prismaService);
     userRepository = new UserRepository(prismaService);
@@ -85,6 +95,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       couponRepository,
       userCouponRepository,
     );
+    const couponRedisService = new CouponRedisService(redisService);
     const userService = new UserDomainService(
       userRepository,
       balanceLogRepository,
@@ -102,6 +113,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       orderService,
       productService,
       couponService,
+      couponRedisService,
       userService,
       prismaService,
     );

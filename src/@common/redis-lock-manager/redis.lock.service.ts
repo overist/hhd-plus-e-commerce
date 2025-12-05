@@ -6,10 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import Redis from 'ioredis';
-import {
-  RedisLockTTLExtentionException,
-  RedisLockWaitTimeoutException,
-} from './redis.lock.exception';
+import { RedisLockWaitTimeoutException } from './redis.lock.exception';
 
 /**
  * Redis Lock 서비스 (분산 락 전용)
