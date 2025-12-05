@@ -26,4 +26,5 @@ export abstract class IUserCouponRepository {
   ): Promise<UserCoupon | null>;
   abstract create(userCoupon: UserCoupon): Promise<UserCoupon>;
   abstract update(userCoupon: UserCoupon): Promise<UserCoupon>;
+  abstract deleteByOrderId(orderId: number): Promise<void>;
 }
