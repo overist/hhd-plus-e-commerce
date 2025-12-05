@@ -2,6 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@common/redis/redis.service';
 
 /**
+ * 쿠폰 사용 결과
+ */
+export interface CouponUseResult {
+  success: boolean;
+  errorCode?: 'USER_COUPON_NOT_FOUND' | 'ALREADY_USED' | 'EXPIRED_COUPON';
+  userCoupon?: CachedUserCoupon;
+  coupon?: CachedCoupon;
+}
+
+/**
  * 쿠폰 발급 결과
  */
 export interface CouponIssueResult {
@@ -118,6 +128,61 @@ export class CouponRedisService {
     )
 
     return {1, coupon['expiredAt'], ARGV[1]}
+  `;
+
+  /**
+   * Lua 스크립트: 원자적 쿠폰 사용
+   * KEYS[1]: 쿠폰 정보 키 (data:coupon:{couponId})
+   * KEYS[2]: 사용자 쿠폰 키 (data:user-coupon:{couponId}:{userId})
+   * ARGV[1]: 현재 시간 (Unix timestamp ms)
+   * ARGV[2]: 주문 ID
+   *
+   * 반환값:
+   * - 1: 성공
+   * - -1: 사용자 쿠폰 없음 (USER_COUPON_NOT_FOUND)
+   * - -2: 이미 사용됨 (ALREADY_USED)
+   * - -3: 만료된 쿠폰 (EXPIRED_COUPON)
+   */
+  private static readonly USE_COUPON_LUA_SCRIPT = `
+    -- 사용자 쿠폰 정보 조회
+    local userCouponData = redis.call('HGETALL', KEYS[2])
+    if #userCouponData == 0 then
+      return {-1, '', '', '', ''}
+    end
+
+    -- Hash 배열을 테이블로 변환
+    local userCoupon = {}
+    for i = 1, #userCouponData, 2 do
+      userCoupon[userCouponData[i]] = userCouponData[i + 1]
+    end
+
+    -- 이미 사용 여부 확인
+    local usedAt = userCoupon['usedAt']
+    if usedAt ~= '' and usedAt ~= nil then
+      return {-2, '', '', '', ''}
+    end
+
+    -- 만료일 확인
+    local expiredAt = tonumber(userCoupon['expiredAt'])
+    local now = tonumber(ARGV[1])
+    if now > expiredAt then
+      return {-3, '', '', '', ''}
+    end
+
+    -- 쿠폰 정보 조회 (할인율 등 필요)
+    local couponData = redis.call('HGETALL', KEYS[1])
+    local coupon = {}
+    for i = 1, #couponData, 2 do
+      coupon[couponData[i]] = couponData[i + 1]
+    end
+
+    -- 사용자 쿠폰 사용 처리
+    redis.call('HSET', KEYS[2],
+      'usedAt', ARGV[1],
+      'orderId', ARGV[2]
+    )
+
+    return {1, userCoupon['expiredAt'], userCoupon['createdAt'], coupon['discountRate'], coupon['name']}
   `;
 
   constructor(private readonly redisService: RedisService) {}
@@ -241,6 +306,83 @@ export class CouponRedisService {
     }
 
     return userCoupons;
+  }
+
+  /**
+   * ANCHOR 쿠폰 사용 (원자적) - Lua 스크립트
+   * Redis에서 쿠폰 사용 처리 (사용 가능 여부 확인 + 사용 마킹)
+   */
+  async useCoupon(
+    userId: number,
+    couponId: number,
+    orderId: number,
+  ): Promise<CouponUseResult> {
+    const couponKey = `${CouponRedisService.COUPON_KEY_PREFIX}:${couponId}`;
+    const userCouponKey = `${CouponRedisService.USER_COUPON_KEY_PREFIX}:${couponId}:${userId}`;
+    const now = Date.now();
+
+    const result = (await this.redisClient.eval(
+      CouponRedisService.USE_COUPON_LUA_SCRIPT,
+      2,
+      couponKey,
+      userCouponKey,
+      now.toString(),
+      orderId.toString(),
+    )) as [number, string, string, string, string];
+
+    const [code, expiredAtStr, createdAtStr, discountRateStr, couponName] =
+      result;
+
+    switch (code) {
+      case 1:
+        return {
+          success: true,
+          userCoupon: {
+            couponId,
+            userId,
+            orderId,
+            createdAt: new Date(parseInt(createdAtStr)),
+            usedAt: new Date(now),
+            expiredAt: new Date(parseInt(expiredAtStr)),
+          },
+          coupon: {
+            id: couponId,
+            name: couponName,
+            discountRate: parseFloat(discountRateStr),
+            totalQuantity: 0, // Lua에서 반환하지 않음
+            issuedQuantity: 0, // Lua에서 반환하지 않음
+            expiredAt: new Date(parseInt(expiredAtStr)),
+            createdAt: new Date(), // placeholder
+            updatedAt: new Date(), // placeholder
+          },
+        };
+      case -1:
+        return { success: false, errorCode: 'USER_COUPON_NOT_FOUND' };
+      case -2:
+        return { success: false, errorCode: 'ALREADY_USED' };
+      case -3:
+        return { success: false, errorCode: 'EXPIRED_COUPON' };
+      default:
+        this.logger.error(`알 수 없는 Lua 스크립트 반환값: ${code}`);
+        return { success: false, errorCode: 'USER_COUPON_NOT_FOUND' };
+    }
+  }
+
+  /**
+   * ANCHOR 쿠폰 사용 취소 - Redis에서 사용자 쿠폰 사용 취소 처리
+   * 결제 실패 시 보상 트랜잭션에서 사용
+   */
+  async cancelCouponUse(userId: number, couponId: number): Promise<void> {
+    const key = `${CouponRedisService.USER_COUPON_KEY_PREFIX}:${couponId}:${userId}`;
+
+    await this.redisClient.hset(key, {
+      usedAt: '',
+      orderId: '',
+    });
+
+    this.logger.log(
+      `쿠폰 사용 취소 완료 - userId: ${userId}, couponId: ${couponId}`,
+    );
   }
 
   /**
