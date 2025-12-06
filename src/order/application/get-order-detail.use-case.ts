@@ -12,7 +12,9 @@ export class GetOrderDetailUseCase {
   /**
    * ANCHOR 주문 상세 조회
    */
-  async execute(query: GetOrderDetailQuery): Promise<GetOrderDetailResult> {
+  async getOrderDetail(
+    query: GetOrderDetailQuery,
+  ): Promise<GetOrderDetailResult> {
     const order = await this.orderService.getOrder(query.orderId);
     const items = await this.orderService.getOrderItems(query.orderId);
 

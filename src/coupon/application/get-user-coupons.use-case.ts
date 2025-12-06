@@ -13,7 +13,9 @@ export class GetUserCouponsUseCase {
    * ANCHOR 사용자 보유 쿠폰 조회 뷰 반환
    * Redis 캐시에서 사용자 쿠폰 목록을 조회합니다.
    */
-  async execute(query: GetUserCouponsQuery): Promise<GetUserCouponsResult[]> {
+  async getUserCoupons(
+    query: GetUserCouponsQuery,
+  ): Promise<GetUserCouponsResult[]> {
     const userCoupons = await this.couponRedisService.getCachedUserCoupons(
       query.userId,
     );

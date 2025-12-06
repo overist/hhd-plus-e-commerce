@@ -17,7 +17,9 @@ export class GetTopProductsUseCase {
    * ANCHOR 인기 상품 조회
    * Redis에서 N일간 판매 랭킹을 조회하고 상품 정보와 매핑하여 반환
    */
-  async execute(query: GetTopProductsQuery): Promise<GetTopProductsResult[]> {
+  async getTopProducts(
+    query: GetTopProductsQuery,
+  ): Promise<GetTopProductsResult[]> {
     // 1. Redis에서 N일간 판매 랭킹 조회
     const salesRankings = await this.orderService.getSalesRankingDays(
       query.count,

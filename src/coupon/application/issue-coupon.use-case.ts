@@ -20,7 +20,7 @@ export class IssueCouponUseCase {
    * - Redis Lua 스크립트로 원자성 보장 (중복 체크 + 재고 차감 + UserCoupon 생성)
    * - DB에는 저장하지 않음 (쿠폰 사용 시 DB 동기화)
    */
-  async execute(cmd: IssueCouponCommand): Promise<IssueCouponResult> {
+  async issueCoupon(cmd: IssueCouponCommand): Promise<IssueCouponResult> {
     // Redis Lua 스크립트로 원자적 발급 처리
     const result = await this.couponRedisService.issueCoupon(
       cmd.userId,

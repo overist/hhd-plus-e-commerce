@@ -14,7 +14,7 @@ export class UpdateStockUseCase {
    * ANCHOR 관리자 상품 재고 수정
    * 트랜잭션으로 조회-수정 원자성 보장
    */
-  async execute(cmd: UpdateStockCommand): Promise<UpdateStockResult> {
+  async updateStock(cmd: UpdateStockCommand): Promise<UpdateStockResult> {
     await this.prisma.runInTransaction(async () => {
       await this.productService.updateProductOptionStock(
         cmd.productOptionId,

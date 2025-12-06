@@ -12,7 +12,9 @@ export class GetBalanceLogsUseCase {
   /**
    * ANCHOR 잔액 변경 이력 조회
    */
-  async execute(query: GetBalanceLogsQuery): Promise<GetBalanceLogsResult> {
+  async getBalanceLogs(
+    query: GetBalanceLogsQuery,
+  ): Promise<GetBalanceLogsResult> {
     const { logs, page, size, total } =
       await this.userService.getBalanceChangeLogs(query.userId);
 

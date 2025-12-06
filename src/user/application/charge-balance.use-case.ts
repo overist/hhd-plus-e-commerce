@@ -13,7 +13,7 @@ export class ChargeBalanceUseCase {
    * ANCHOR 잔액 충전
    * 낙관적 잠금으로 동시성 제어
    */
-  async execute(cmd: ChargeBalanceCommand): Promise<ChargeBalanceResult> {
+  async chargeBalance(cmd: ChargeBalanceCommand): Promise<ChargeBalanceResult> {
     const user = await this.userService.chargeBalance(cmd.userId, cmd.amount);
 
     return ChargeBalanceResult.fromDomain(user);

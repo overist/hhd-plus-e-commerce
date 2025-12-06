@@ -49,7 +49,7 @@ describe('잔액 충전 통합 테스트 (관리자 기능)', () => {
       // When: 3번 동시에 5,000원씩 충전
       await Promise.all(
         Array.from({ length: 3 }, () =>
-          chargeBalanceUseCase.execute({ userId: user.id, amount: 5000 }),
+          chargeBalanceUseCase.chargeBalance({ userId: user.id, amount: 5000 }),
         ),
       );
 

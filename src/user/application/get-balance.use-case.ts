@@ -9,7 +9,7 @@ export class GetBalanceUseCase {
   /**
    * ANCHOR 잔액 조회
    */
-  async execute(query: GetBalanceQuery): Promise<GetBalanceResult> {
+  async getBalance(query: GetBalanceQuery): Promise<GetBalanceResult> {
     const user = await this.userService.getUser(query.userId);
 
     return GetBalanceResult.fromDomain(user);

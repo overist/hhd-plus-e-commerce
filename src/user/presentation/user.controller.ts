@@ -63,7 +63,7 @@ export class UserController {
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<GetBalanceResponse> {
     const query = GetBalanceRequest.toQuery(userId);
-    return await this.getBalanceUseCase.execute(query);
+    return await this.getBalanceUseCase.getBalance(query);
   }
 
   /**
@@ -88,7 +88,7 @@ export class UserController {
     @Body() dto: ChargeBalanceRequest,
   ): Promise<ChargeBalanceResponse> {
     const command = ChargeBalanceRequest.toCommand(userId, dto);
-    return await this.chargeBalanceUseCase.execute(command);
+    return await this.chargeBalanceUseCase.chargeBalance(command);
   }
 
   /**
@@ -113,6 +113,6 @@ export class UserController {
     @Query() dto: GetBalanceLogsRequest,
   ): Promise<GetBalanceLogsResponse> {
     const query = GetBalanceLogsRequest.toQuery(userId, dto);
-    return await this.getBalanceLogsUseCase.execute(query);
+    return await this.getBalanceLogsUseCase.getBalanceLogs(query);
   }
 }

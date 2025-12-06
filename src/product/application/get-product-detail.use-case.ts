@@ -12,7 +12,9 @@ export class GetProductDetailUseCase {
   /**
    * ANCHOR 상품 상세 및 옵션 조회
    */
-  async execute(query: GetProductDetailQuery): Promise<GetProductDetailResult> {
+  async getProductDetail(
+    query: GetProductDetailQuery,
+  ): Promise<GetProductDetailResult> {
     const product = await this.productService.getProduct(query.productId);
     const options = await this.productService.getProductOptions(
       query.productId,

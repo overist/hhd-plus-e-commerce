@@ -13,7 +13,7 @@ export class GetCartUseCase {
   /**
    * 장바구니-상품옵션 조회 뷰 반환
    */
-  async execute(query: GetCartQuery): Promise<GetCartResult[]> {
+  async getCart(query: GetCartQuery): Promise<GetCartResult[]> {
     const cartItems = await this.cartService.getCartItems(query.userId);
     if (cartItems.length === 0) return [];
 

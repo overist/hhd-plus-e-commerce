@@ -57,7 +57,7 @@ export class CartController {
     @Param() dto: GetCartRequest,
   ): Promise<GetCartResponse> {
     const query = GetCartRequest.toQuery(userId, dto);
-    const result = await this.getCartUseCase.execute(query);
+    const result = await this.getCartUseCase.getCart(query);
     return { data: result } as GetCartResponse;
   }
 
@@ -84,7 +84,7 @@ export class CartController {
   ): Promise<AddCartResponse> {
     const command = AddCartRequest.toCommand(userId, dto);
 
-    return await this.addCartUseCase.execute(command);
+    return await this.addCartUseCase.addToCart(command);
   }
 
   /**
@@ -111,7 +111,7 @@ export class CartController {
   ): Promise<RemoveCartResponse> {
     const command = RemoveCartRequest.toCommand(userId, dto);
 
-    return await this.removeCartUseCase.execute(command);
+    return await this.removeCartUseCase.removeFromCart(command);
   }
 
   // TODO 장바구니 수량 수정

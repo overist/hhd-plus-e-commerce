@@ -14,7 +14,7 @@ export class AddCartUseCase {
   /**
    * ANCHOR 장바구니에 상품 추가 또는 수량 증가
    */
-  async execute(cmd: AddCartCommand): Promise<AddCartResult> {
+  async addToCart(cmd: AddCartCommand): Promise<AddCartResult> {
     const existingItem = await this.cartService.getCartItem(
       cmd.userId,
       cmd.productOptionId,

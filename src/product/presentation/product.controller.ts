@@ -78,7 +78,7 @@ export class ProductController {
   })
   async getProducts(): Promise<GetProductsResponse> {
     const query = GetProductsRequest.toQuery();
-    const result = await this.getProductsUseCase.execute(query);
+    const result = await this.getProductsUseCase.getProducts(query);
 
     return { data: result };
   }
@@ -104,7 +104,7 @@ export class ProductController {
     @Query() dto: GetTopProductsRequest,
   ): Promise<GetTopProductsResponse> {
     const query = GetTopProductsRequest.toQuery(dto);
-    const result = await this.getTopProductsUseCase.execute(query);
+    const result = await this.getTopProductsUseCase.getTopProducts(query);
 
     return { data: result };
   }
@@ -132,7 +132,7 @@ export class ProductController {
     @Param('productId', ParseIntPipe) productId: number,
   ): Promise<GetProductDetailResponse> {
     const query = GetProductDetailRequest.toQuery(productId);
-    const result = await this.getProductDetailUseCase.execute(query);
+    const result = await this.getProductDetailUseCase.getProductDetail(query);
 
     return { data: result };
   }
@@ -160,6 +160,6 @@ export class ProductController {
   ): Promise<UpdateStockResponse> {
     const command = UpdateStockRequest.toCommand(optionId, dto);
 
-    return await this.updateStockUseCase.execute(command);
+    return await this.updateStockUseCase.updateStock(command);
   }
 }

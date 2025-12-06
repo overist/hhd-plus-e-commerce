@@ -69,7 +69,7 @@ export class OrderController {
     @Body() dto: CreateOrderRequest,
   ): Promise<CreateOrderResponse> {
     const command = CreateOrderRequest.toCommand(dto);
-    const result = await this.createOrderUseCase.execute(command);
+    const result = await this.createOrderUseCase.createOrder(command);
 
     return CreateOrderResponse.fromResult(result);
   }
@@ -98,7 +98,7 @@ export class OrderController {
     @Body() dto: ProcessPaymentRequest,
   ): Promise<ProcessPaymentResponse> {
     const command = ProcessPaymentRequest.toCommand(orderId, dto);
-    const result = await this.processPaymentUseCase.execute(command);
+    const result = await this.processPaymentUseCase.processPayment(command);
 
     return ProcessPaymentResponse.fromResult(result);
   }
@@ -123,7 +123,7 @@ export class OrderController {
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<GetOrdersResponse> {
     const query = GetOrdersRequest.toQuery(userId);
-    const result = await this.getOrdersUseCase.execute(query);
+    const result = await this.getOrdersUseCase.getOrders(query);
 
     return GetOrdersResponse.fromResult(result);
   }
@@ -148,7 +148,7 @@ export class OrderController {
     @Param('orderId', ParseIntPipe) orderId: number,
   ): Promise<GetOrderDetailResponse> {
     const query = GetOrderDetailRequest.toQuery(orderId);
-    const result = await this.getOrderDetailUseCase.execute(query);
+    const result = await this.getOrderDetailUseCase.getOrderDetail(query);
 
     return GetOrderDetailResponse.fromResult(result);
   }

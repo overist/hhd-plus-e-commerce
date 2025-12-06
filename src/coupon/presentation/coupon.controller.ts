@@ -62,7 +62,7 @@ export class CouponController {
   ): Promise<IssueCouponResponse> {
     const command = IssueCouponRequest.toCommand(couponId, dto);
 
-    return await this.issueCouponUseCase.execute(command);
+    return await this.issueCouponUseCase.issueCoupon(command);
   }
 
   /**
@@ -85,7 +85,7 @@ export class CouponController {
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<GetUserCouponsResponse> {
     const query = GetUserCouponsRequest.toQuery(userId);
-    const result = await this.getUserCouponsUseCase.execute(query);
+    const result = await this.getUserCouponsUseCase.getUserCoupons(query);
     return { data: result } as GetUserCouponsResponse;
   }
 }

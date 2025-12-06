@@ -148,7 +148,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       // When: 3명이 각각 주문 생성 (재고 선점)
       const orders = await Promise.all(
         users.map((user) =>
-          createOrderUseCase.execute({
+          createOrderUseCase.createOrder({
             userId: user.id,
             items: [{ productOptionId: productOption.id, quantity: 10 }],
           }),
@@ -158,7 +158,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       // When: 3명이 동시에 결제 (잔액 차감 + 재고 확정)
       await Promise.all(
         orders.map((order, idx) =>
-          processPaymentUseCase.execute({
+          processPaymentUseCase.processPayment({
             orderId: order.orderId,
             userId: users[idx].id,
           }),
@@ -201,7 +201,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
 
       // When: 주문 생성 (재고 선점 성공)
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
@@ -213,7 +213,7 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
 
       // When: 결제 시도 (잔액 부족으로 실패)
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
         }),

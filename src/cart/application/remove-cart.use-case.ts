@@ -9,7 +9,7 @@ export class RemoveCartUseCase {
   /**
    * 장바구니 항목 삭제 또는 수량 감소
    */
-  async execute(cmd: RemoveCartCommand): Promise<RemoveCartResult> {
+  async removeFromCart(cmd: RemoveCartCommand): Promise<RemoveCartResult> {
     await this.cartService.decreaseQuantityOrRemove(
       cmd.userId,
       cmd.productOptionId,

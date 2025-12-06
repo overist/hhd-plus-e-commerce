@@ -29,7 +29,9 @@ export class ProcessPaymentUseCase {
    * 유저 포인트 차감은 낙관적 잠금이므로 트랜잭션 밖에서 처리하고,
    * 실패 시 보상 트랜잭션을 통해 쿠폰/주문/재고를 롤백
    */
-  async execute(cmd: ProcessPaymentCommand): Promise<ProcessPaymentResult> {
+  async processPayment(
+    cmd: ProcessPaymentCommand,
+  ): Promise<ProcessPaymentResult> {
     let paymentAmount = 0;
     let appliedCouponId: number | null = null;
     let orderItems: OrderItem[] = [];

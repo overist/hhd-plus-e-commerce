@@ -18,7 +18,7 @@ export class CreateOrderUseCase {
    * ANCHOR 주문 생성
    * 트랜잭션으로 재고 선점 + 주문 생성을 원자적으로 처리
    */
-  async execute(cmd: CreateOrderCommand): Promise<CreateOrderResult> {
+  async createOrder(cmd: CreateOrderCommand): Promise<CreateOrderResult> {
     return await this.prisma.runInTransaction(async () => {
       // 사용자 존재 확인
       await this.userService.getUser(cmd.userId);

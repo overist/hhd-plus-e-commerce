@@ -9,7 +9,7 @@ export class GetOrdersUseCase {
   /**
    * ANCHOR 주문 내역 조회
    */
-  async execute(query: GetOrdersQuery): Promise<GetOrdersResult[]> {
+  async getOrders(query: GetOrdersQuery): Promise<GetOrdersResult[]> {
     const orders = await this.orderService.getOrders(query.userId);
 
     return orders.map((order) => GetOrdersResult.fromDomain(order));

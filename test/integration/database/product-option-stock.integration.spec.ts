@@ -122,7 +122,7 @@ describe('동시성 제어 통합 테스트', () => {
       // When: 10명이 각각 10개씩 동시 주문
       await Promise.all(
         users.map((user) =>
-          createOrderUseCase.execute({
+          createOrderUseCase.createOrder({
             userId: user.id,
             items: [{ productOptionId: productOption.id, quantity: 10 }],
           }),

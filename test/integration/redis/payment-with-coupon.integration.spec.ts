@@ -210,13 +210,13 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       await issueTestCouponToUser(user.id, coupon.id);
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 쿠폰을 사용하여 결제
-      const result = await processPaymentUseCase.execute({
+      const result = await processPaymentUseCase.processPayment({
         orderId: order.orderId,
         userId: user.id,
         couponId: coupon.id,
@@ -267,13 +267,13 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       );
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 2 }],
       });
 
       // When: 쿠폰 없이 결제
-      const result = await processPaymentUseCase.execute({
+      const result = await processPaymentUseCase.processPayment({
         orderId: order.orderId,
         userId: user.id,
       });
@@ -306,14 +306,14 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       const coupon = await createTestCoupon(10, 100);
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When & Then: 발급받지 않은 쿠폰으로 결제 시 실패
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -353,25 +353,25 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       await issueTestCouponToUser(user.id, coupon.id);
 
       // Given: 첫 번째 주문 생성 및 쿠폰 사용 결제
-      const order1 = await createOrderUseCase.execute({
+      const order1 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
-      await processPaymentUseCase.execute({
+      await processPaymentUseCase.processPayment({
         orderId: order1.orderId,
         userId: user.id,
         couponId: coupon.id,
       });
 
       // Given: 두 번째 주문 생성
-      const order2 = await createOrderUseCase.execute({
+      const order2 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When & Then: 이미 사용된 쿠폰으로 결제 시 실패
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order2.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -444,14 +444,14 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       });
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When & Then: 만료된 쿠폰으로 결제 시 실패
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: dbCoupon.id,
@@ -489,14 +489,14 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       await issueTestCouponToUser(user.id, coupon.id);
 
       // Given: 주문 생성 (재고 선점)
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 결제 시도 (잔액 부족으로 실패)
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -542,14 +542,14 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       const coupon = await createTestCoupon(10, 100);
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 발급받지 않은 쿠폰으로 결제 시도 (1단계에서 실패)
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -608,25 +608,25 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
 
       // Given: 쿠폰 발급 및 첫 번째 결제 완료
       await issueTestCouponToUser(user.id, coupon.id);
-      const order1 = await createOrderUseCase.execute({
+      const order1 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
-      await processPaymentUseCase.execute({
+      await processPaymentUseCase.processPayment({
         orderId: order1.orderId,
         userId: user.id,
         couponId: coupon.id,
       });
 
       // Given: 두 번째 주문 생성
-      const order2 = await createOrderUseCase.execute({
+      const order2 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 이미 사용된 쿠폰으로 결제 시도 (1단계에서 실패 - ALREADY_USED)
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order2.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -670,7 +670,7 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       await issueTestCouponToUser(user.id, coupon.id);
 
       // Given: 주문 생성 (재고 선점)
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
@@ -683,7 +683,7 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
 
       // When: 결제 시도 (3단계 잔액 차감에서 실패)
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -738,14 +738,14 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       );
 
       // Given: 주문 생성 (재고 선점)
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 쿠폰 없이 결제 시도 (잔액 부족)
       await expect(
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
         }),
@@ -792,24 +792,24 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       await issueTestCouponToUser(user.id, coupon.id);
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 동시에 3회 결제 클릭 시뮬레이션
       const results = await Promise.allSettled([
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
         }),
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
         }),
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -860,32 +860,32 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       await issueTestCouponToUser(user.id, coupon.id);
 
       // Given: 3개의 주문 생성
-      const order1 = await createOrderUseCase.execute({
+      const order1 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
-      const order2 = await createOrderUseCase.execute({
+      const order2 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
-      const order3 = await createOrderUseCase.execute({
+      const order3 = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 동일 쿠폰으로 3개 주문에 동시 결제 시도
       const results = await Promise.allSettled([
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order1.orderId,
           userId: user.id,
           couponId: coupon.id,
         }),
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order2.orderId,
           userId: user.id,
           couponId: coupon.id,
         }),
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order3.orderId,
           userId: user.id,
           couponId: coupon.id,
@@ -941,22 +941,22 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       );
 
       // Given: 주문 생성
-      const order = await createOrderUseCase.execute({
+      const order = await createOrderUseCase.createOrder({
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
       // When: 동시에 3회 결제 클릭
       const results = await Promise.allSettled([
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
         }),
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
         }),
-        processPaymentUseCase.execute({
+        processPaymentUseCase.processPayment({
           orderId: order.orderId,
           userId: user.id,
         }),

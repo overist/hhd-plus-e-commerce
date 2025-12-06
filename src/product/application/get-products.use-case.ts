@@ -9,7 +9,7 @@ export class GetProductsUseCase {
   /**
    * ANCHOR 판매 중인 상품 목록 조회
    */
-  async execute(query: GetProductsQuery): Promise<GetProductsResult[]> {
+  async getProducts(query: GetProductsQuery): Promise<GetProductsResult[]> {
     const products = await this.productService.getProductsOnSale();
 
     return products.map((product) => GetProductsResult.fromDomain(product));

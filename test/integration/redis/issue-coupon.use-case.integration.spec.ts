@@ -205,7 +205,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
           couponId: coupon.id,
         };
         return issueCouponUseCase
-          .execute(command)
+          .issueCoupon(command)
           .then((result) => ({ success: true, result, userId: user.id }))
           .catch((error) => ({ success: false, error, userId: user.id }));
       });
@@ -250,7 +250,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
           couponId: coupon.id,
         };
         return issueCouponUseCase
-          .execute(command)
+          .issueCoupon(command)
           .then((result) => ({ success: true, result }))
           .catch((error) => ({ success: false, error }));
       });
@@ -292,7 +292,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
           couponId: coupon.id,
         };
         return issueCouponUseCase
-          .execute(command)
+          .issueCoupon(command)
           .then((result) => ({ success: true, result, userId: user.id }))
           .catch((error) => ({ success: false, error, userId: user.id }));
       });
@@ -323,11 +323,11 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
 
       // When: 각 사용자가 서로 다른 쿠폰을 동시에 발급 요청
       const promises = [
-        issueCouponUseCase.execute({
+        issueCouponUseCase.issueCoupon({
           userId: users[0].id,
           couponId: coupon1.id,
         }),
-        issueCouponUseCase.execute({
+        issueCouponUseCase.issueCoupon({
           userId: users[1].id,
           couponId: coupon2.id,
         }),
@@ -365,7 +365,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
           couponId: coupon.id,
         };
         return issueCouponUseCase
-          .execute(command)
+          .issueCoupon(command)
           .then((result) => ({ success: true, result, userId: user.id }))
           .catch((error) => ({ success: false, error, userId: user.id }));
       });
@@ -406,7 +406,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
 
       // When & Then: COUPON_NOT_FOUND 에러 발생
       await expect(
-        issueCouponUseCase.execute({
+        issueCouponUseCase.issueCoupon({
           userId: user.id,
           couponId: nonExistentCouponId,
         }),
@@ -420,7 +420,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
 
       // When & Then: EXPIRED_COUPON 에러 발생
       await expect(
-        issueCouponUseCase.execute({
+        issueCouponUseCase.issueCoupon({
           userId: user.id,
           couponId: expiredCoupon.id,
         }),
@@ -433,14 +433,14 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
       const users = await createTestUsers(2);
 
       // 첫 번째 사용자가 쿠폰 발급 (재고 소진)
-      await issueCouponUseCase.execute({
+      await issueCouponUseCase.issueCoupon({
         userId: users[0].id,
         couponId: coupon.id,
       });
 
       // When & Then: 두 번째 사용자 발급 시도 시 COUPON_SOLD_OUT 에러
       await expect(
-        issueCouponUseCase.execute({
+        issueCouponUseCase.issueCoupon({
           userId: users[1].id,
           couponId: coupon.id,
         }),
@@ -466,7 +466,7 @@ describe('IssueCouponUseCase Redis Lua 스크립트 통합 테스트', () => {
           couponId: coupon.id,
         };
         return issueCouponUseCase
-          .execute(command)
+          .issueCoupon(command)
           .then((result) => ({ success: true, result, userId: user.id }))
           .catch((error) => ({ success: false, error, userId: user.id }));
       });
