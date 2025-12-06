@@ -1,3 +1,4 @@
+import { Order } from '@/order/domain/entities/order.entity';
 import { User } from '@/user/domain/entities/user.entity';
 
 /**
@@ -19,18 +20,13 @@ export class ProcessPaymentResult {
   remainingBalance: number;
   paidAt: Date;
 
-  static fromData(
-    orderId: number,
-    paidAmount: number,
-    user: User,
-    paidAt: Date,
-  ): ProcessPaymentResult {
+  static from(order: Order, user: User): ProcessPaymentResult {
     const result = new ProcessPaymentResult();
-    result.orderId = orderId;
-    result.status = 'PAID';
-    result.paidAmount = paidAmount;
+    result.orderId = order.id;
+    result.status = order.status.value;
+    result.paidAmount = order.finalAmount;
     result.remainingBalance = user.balance;
-    result.paidAt = paidAt;
+    result.paidAt = new Date();
     return result;
   }
 }

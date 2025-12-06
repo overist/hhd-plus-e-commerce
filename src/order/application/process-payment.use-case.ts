@@ -11,6 +11,7 @@ import {
   ProcessPaymentResult,
 } from './dto/process-payment.dto';
 import { OrderItem } from '../domain/entities/order-item.entity';
+import { Order } from '../domain/entities/order.entity';
 
 @Injectable()
 export class ProcessPaymentUseCase {
@@ -32,8 +33,8 @@ export class ProcessPaymentUseCase {
   async processPayment(
     cmd: ProcessPaymentCommand,
   ): Promise<ProcessPaymentResult> {
-    let paymentAmount = 0;
     let appliedCouponId: number | null = null;
+    let order: Order;
     let orderItems: OrderItem[] = [];
     let discountRate = 0;
     let couponUsedAt: Date | null = null;
@@ -61,7 +62,7 @@ export class ProcessPaymentUseCase {
 
       // 2단계: 트랜잭션 - 주문 상태 변경 + 재고 확정 + 쿠폰 사용 정보 DB 저장
       await this.prisma.runInTransaction(async () => {
-        const order = await this.orderService.getOrder(cmd.orderId);
+        order = await this.orderService.getOrder(cmd.orderId);
         order.validateOwnedBy(cmd.userId);
 
         // 쿠폰 할인 적용
@@ -82,8 +83,6 @@ export class ProcessPaymentUseCase {
           await this.couponService.updateUserCoupon(newUserCoupon);
         }
 
-        paymentAmount = order.finalAmount;
-
         // 결제 처리
         order.pay();
         await this.orderService.updateOrder(order);
@@ -103,20 +102,13 @@ export class ProcessPaymentUseCase {
       // 3단계: 트랜잭션 외부 - 사용자 잔액 차감 (낙관적 잠금)
       const user = await this.userService.deductBalance(
         cmd.userId,
-        paymentAmount,
+        order!.finalAmount,
         cmd.orderId,
         `주문 ${cmd.orderId} 결제`,
       );
 
-      // 비동기로 인기상품 집계 (fire and forget)
-      this.orderService.recordSales(orderItems);
-
-      return ProcessPaymentResult.fromData(
-        cmd.orderId,
-        paymentAmount,
-        user,
-        new Date(),
-      );
+      const result = ProcessPaymentResult.from(order!, user);
+      return result;
     } catch (error) {
       // 보상 트랜잭션
       if (appliedCouponId) {
