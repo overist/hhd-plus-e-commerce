@@ -227,17 +227,18 @@ export class ProductSalesRankingRepository
     const YYYYMMDD = new Date().toISOString().split('T')[0].replace(/-/g, '');
     const key = `${ProductSalesRankingRepository.SALES_RANKING_PREFIX}:${YYYYMMDD}`;
 
-    // 비동기로 각 상품의 판매량 증가 (fire-and-forget)
-    Promise.all(
-      orderItems.map((item) => {
-        this.redisClient.zincrby(
-          key,
-          item.quantity,
-          item.productOptionId.toString(),
-        );
-        this.redisClient.expire(key, 60 * 60 * 24 * 31); // 31일
-      }),
-    ).catch((error) => {
+    // Pipeline을 사용하여 순서 보장 및 일괄 처리
+    const pipeline = this.redisClient.pipeline();
+
+    for (const item of orderItems) {
+      pipeline.zincrby(key, item.quantity, item.productOptionId.toString());
+    }
+
+    // 모든 zincrby 후 expire 설정 (31일)
+    pipeline.expire(key, 60 * 60 * 24 * 31);
+
+    // 비동기 실행 (fire-and-forget)
+    pipeline.exec().catch((error) => {
       this.logger.error(
         `인기상품 랭킹 업데이트 실패 - key: ${key}`,
         error instanceof Error ? error.stack : error,
