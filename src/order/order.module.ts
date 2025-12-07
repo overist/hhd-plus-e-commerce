@@ -19,6 +19,9 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
 import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
+// Event Listeners
+import { OnOrderProcessedListener } from '@/order/application/listeners/on-order-processed.listener';
+
 /**
  * Order Module
  * 주문 및 결제 관리 모듈
@@ -47,6 +50,9 @@ import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-
     ProcessPaymentUseCase,
     GetOrdersUseCase,
     GetOrderDetailUseCase,
+
+    // Event Listeners
+    OnOrderProcessedListener,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],
 })
