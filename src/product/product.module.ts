@@ -18,6 +18,10 @@ import { GetProductDetailUseCase } from '@/product/application/get-product-detai
 import { GetTopProductsUseCase } from '@/product/application/get-top-products.use-case';
 import { UpdateStockUseCase } from '@/product/application/update-stock.use-case';
 
+// Event Listeners
+
+import { OnOrderProcessedListener } from './application/listeners/on-order-processed.listener';
+
 /**
  * Product Module
  * 상품 관련 기능 모듈
@@ -51,6 +55,9 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
     GetProductDetailUseCase,
     GetTopProductsUseCase,
     UpdateStockUseCase,
+
+    // Event Listeners
+    OnOrderProcessedListener,
   ],
   exports: [
     ProductDomainService,
