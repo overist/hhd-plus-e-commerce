@@ -57,7 +57,7 @@ describe('동시성 제어 통합 테스트', () => {
     );
     const couponRepository = new CouponRepository(prismaService);
     const userCouponRepository = new UserCouponRepository(prismaService);
-    const productPopularitySnapshotRepository = new (class {
+    const productSalesRankingRepository = new (class {
       async findAll() {
         return [];
       }
@@ -76,7 +76,7 @@ describe('동시성 제어 통합 테스트', () => {
     const productService = new ProductDomainService(
       productRepository,
       productOptionRepository,
-      productPopularitySnapshotRepository as any,
+      productSalesRankingRepository as any,
     );
     const userService = new UserDomainService(
       userRepository,

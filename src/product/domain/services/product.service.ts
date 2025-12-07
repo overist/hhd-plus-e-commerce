@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import {
   IProductOptionRepository,
-  IProductPopularitySnapshotRepository,
+  IProductSalesRankingRepository,
   IProductRepository,
 } from '@/product/domain/interfaces/product.repository.interface';
 import { Product } from '../entities/product.entity';
 import { ProductOption } from '../entities/product-option.entity';
-import { ProductPopularitySnapshot } from '../entities/product-popularity-snapshot.entity';
+import { ProductSalesRanking } from '../entities/product-sales.vo';
 import { ErrorCode, DomainException } from '@common/exception';
 import { OrderItemData } from '@/order/domain/entities/order.types';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
 
 /**
  * ProductDomainService
@@ -19,7 +20,7 @@ export class ProductDomainService {
   constructor(
     private readonly productRepository: IProductRepository,
     private readonly productOptionRepository: IProductOptionRepository,
-    private readonly productPopularitySnapshotRepository: IProductPopularitySnapshotRepository,
+    private readonly productSalesRankingRepository: IProductSalesRankingRepository,
   ) {}
 
   /**
@@ -88,14 +89,18 @@ export class ProductDomainService {
   }
 
   /**
-   * ANCHOR 인기 상품 스냅샷 조회
+   * ANCHOR 인기 상품 조회 (Redis 기반)
+   * N일간 판매 랭킹을 조회하여 반환
    */
-  async getTopProducts(count: number): Promise<ProductPopularitySnapshot[]> {
+  async getTopProducts(
+    count: number,
+    days: number = 3,
+  ): Promise<ProductSalesRanking[]> {
     if (count <= 0) {
       throw new DomainException(ErrorCode.INVALID_ARGUMENT);
     }
 
-    return this.productPopularitySnapshotRepository.findTop(count);
+    return this.getSalesRankingDays(count, days);
   }
 
   /**
@@ -183,5 +188,62 @@ export class ProductDomainService {
 
     option.restoreStock(quantity);
     await this.productOptionRepository.update(option);
+  }
+
+  /**
+   * ANCHOR 인기상품 랭킹 집계
+   * @param orderItems 주문 아이템 엔티티 배열
+   */
+  recordSales(orderItems: OrderItem[]): void {
+    this.productSalesRankingRepository.recordSales(orderItems);
+  }
+
+  /**
+   * ANCHOR N일간 인기상품 랭킹 조회
+   */
+  async getSalesRankingDays(
+    count: number,
+    days: number = 3,
+  ): Promise<ProductSalesRanking[]> {
+    const MAX_DATE_RANGE_DAYS = 30;
+    if (days <= 0 || days > MAX_DATE_RANGE_DAYS) {
+      throw new DomainException(ErrorCode.INVALID_ARGUMENT);
+    }
+
+    const aggregateMap: Map<number, number> = new Map();
+
+    // dateRangeDays 일 수만큼 반복하여 각 날짜의 랭킹 조회
+    const rankPromises: Promise<ProductSalesRanking[]>[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const YYYYMMDD = date.toISOString().split('T')[0].replace(/-/g, '');
+      rankPromises.push(
+        this.productSalesRankingRepository.findRankByDate(YYYYMMDD),
+      );
+    }
+
+    const ranks = await Promise.all(rankPromises);
+
+    // 모든 랭킹 데이터 집계
+    for (const rank of ranks) {
+      for (const ranking of rank) {
+        const currentCount = aggregateMap.get(ranking.productOptionId) || 0;
+        aggregateMap.set(
+          ranking.productOptionId,
+          currentCount + ranking.salesCount,
+        );
+      }
+    }
+
+    const aggregatedRanks = Array.from(aggregateMap.entries()).map(
+      ([productOptionId, salesCount]) =>
+        new ProductSalesRanking(productOptionId, salesCount),
+    );
+
+    aggregatedRanks.sort((a, b) => b.salesCount - a.salesCount);
+
+    return aggregatedRanks.slice(0, count);
   }
 }

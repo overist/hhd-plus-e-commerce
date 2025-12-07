@@ -1,17 +1,16 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import {
   IProductRepository,
   IProductOptionRepository,
-  IProductPopularitySnapshotRepository,
+  IProductSalesRankingRepository,
 } from '@/product/domain/interfaces/product.repository.interface';
 import {
   ProductRepository,
   ProductOptionRepository,
-  ProductPopularitySnapshotRepository,
+  ProductSalesRankingRepository,
 } from '@/product/infrastructure/product.repository';
 import { ProductController } from '@/product/presentation/product.controller';
-import { OrderModule } from '@/order/order.module';
 
 // Use Cases
 import { GetProductsUseCase } from '@/product/application/get-products.use-case';
@@ -24,7 +23,7 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
  * 상품 관련 기능 모듈
  */
 @Module({
-  imports: [forwardRef(() => OrderModule)],
+  imports: [],
   controllers: [ProductController],
   providers: [
     // Product Repositories
@@ -38,10 +37,10 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
       provide: IProductOptionRepository,
       useClass: ProductOptionRepository,
     },
-    ProductPopularitySnapshotRepository,
+    ProductSalesRankingRepository,
     {
-      provide: IProductPopularitySnapshotRepository,
-      useClass: ProductPopularitySnapshotRepository,
+      provide: IProductSalesRankingRepository,
+      useClass: ProductSalesRankingRepository,
     },
 
     // Domain Service
@@ -57,7 +56,7 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
     ProductDomainService,
     IProductRepository,
     IProductOptionRepository,
-    IProductPopularitySnapshotRepository,
+    IProductSalesRankingRepository,
   ],
 })
 export class ProductModule {}

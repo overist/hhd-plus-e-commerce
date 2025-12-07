@@ -5,6 +5,7 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { UserDomainService } from '@/user/domain/services/user.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   OrderRepository,
   OrderItemRepository,
@@ -85,7 +86,7 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
     couponRepository = new CouponRepository(prismaService);
     userCouponRepository = new UserCouponRepository(prismaService);
 
-    const productPopularitySnapshotRepository = new (class {
+    const productSalesRankingRepository = new (class {
       async findAll() {
         return [];
       }
@@ -105,7 +106,7 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
     const productService = new ProductDomainService(
       productRepository,
       productOptionRepository,
-      productPopularitySnapshotRepository as any,
+      productSalesRankingRepository as any,
     );
     const couponService = new CouponDomainService(
       couponRepository,
@@ -133,6 +134,7 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       couponRedisService,
       userService,
       prismaService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
     );
   });
 

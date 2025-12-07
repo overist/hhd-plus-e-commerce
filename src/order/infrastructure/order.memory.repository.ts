@@ -87,17 +87,4 @@ export class OrderItemRepository implements IOrderItemRepository {
   async createMany(orderItems: OrderItem[]): Promise<OrderItem[]> {
     return Promise.all(orderItems.map((item) => this.create(item)));
   }
-
-  // ANCHOR recordSales
-  recordSales(orderItems: OrderItem[]): void {
-    // In-memory implementation does not track sales
-  }
-
-  // ANCHOR findRankByDate
-  async findRankByDate(
-    date: string,
-  ): Promise<{ productOptionId: number; salesCount: number }[]> {
-    // In-memory implementation does not track sales, return empty array
-    return [];
-  }
 }

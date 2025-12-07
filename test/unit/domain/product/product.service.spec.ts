@@ -1,11 +1,12 @@
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
-import { ProductPopularitySnapshot } from '@/product/domain/entities/product-popularity-snapshot.entity';
+import { ProductSalesRanking } from '@/product/domain/entities/product-sales.vo';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
 import {
   IProductRepository,
   IProductOptionRepository,
-  IProductPopularitySnapshotRepository,
+  IProductSalesRankingRepository,
 } from '@/product/domain/interfaces/product.repository.interface';
 import { ErrorCode, DomainException } from '@common/exception';
 
@@ -13,7 +14,7 @@ describe('ProductDomainService', () => {
   let productDomainService: ProductDomainService;
   let mockProductRepository: jest.Mocked<IProductRepository>;
   let mockProductOptionRepository: jest.Mocked<IProductOptionRepository>;
-  let mockProductPopularitySnapshotRepository: jest.Mocked<IProductPopularitySnapshotRepository>;
+  let mockProductSalesRankingRepository: jest.Mocked<IProductSalesRankingRepository>;
 
   beforeEach(() => {
     // Mock Repository 생성
@@ -33,16 +34,15 @@ describe('ProductDomainService', () => {
       update: jest.fn(),
     } as any;
 
-    mockProductPopularitySnapshotRepository = {
-      findTop: jest.fn(),
-      create: jest.fn(),
-      deleteAll: jest.fn(),
+    mockProductSalesRankingRepository = {
+      recordSales: jest.fn(),
+      findRankByDate: jest.fn(),
     } as any;
 
     productDomainService = new ProductDomainService(
       mockProductRepository,
       mockProductOptionRepository,
-      mockProductPopularitySnapshotRepository,
+      mockProductSalesRankingRepository,
     );
   });
 
@@ -284,45 +284,45 @@ describe('ProductDomainService', () => {
   });
 
   describe('getTopProducts', () => {
-    it('인기 상품 스냅샷을 조회한다', async () => {
+    it('인기 상품 판매 랭킹을 조회한다', async () => {
       // given
       const count = 5;
-      const snapshots = [
-        new ProductPopularitySnapshot(
-          1,
-          100,
-          '인기상품1',
-          50000,
-          '전자기기',
-          1,
-          1000,
-          new Date(),
-          new Date(),
-        ),
-        new ProductPopularitySnapshot(
-          2,
-          101,
-          '인기상품2',
-          30000,
-          '의류',
-          2,
-          800,
-          new Date(),
-          new Date(),
-        ),
+      const days = 3;
+      const todayRank = [
+        new ProductSalesRanking(100, 50),
+        new ProductSalesRanking(101, 30),
       ];
-      mockProductPopularitySnapshotRepository.findTop.mockResolvedValue(
-        snapshots,
-      );
+      const yesterdayRank = [
+        new ProductSalesRanking(100, 40),
+        new ProductSalesRanking(102, 20),
+      ];
+      const twoDaysAgoRank = [
+        new ProductSalesRanking(101, 25),
+        new ProductSalesRanking(102, 15),
+      ];
+
+      mockProductSalesRankingRepository.findRankByDate
+        .mockResolvedValueOnce(todayRank)
+        .mockResolvedValueOnce(yesterdayRank)
+        .mockResolvedValueOnce(twoDaysAgoRank);
 
       // when
-      const result = await productDomainService.getTopProducts(count);
+      const result = await productDomainService.getTopProducts(count, days);
 
       // then
-      expect(result).toEqual(snapshots);
+      expect(result).toHaveLength(3);
+      // productOptionId 100: 50 + 40 = 90
+      // productOptionId 101: 30 + 25 = 55
+      // productOptionId 102: 20 + 15 = 35
+      expect(result[0].productOptionId).toBe(100);
+      expect(result[0].salesCount).toBe(90);
+      expect(result[1].productOptionId).toBe(101);
+      expect(result[1].salesCount).toBe(55);
+      expect(result[2].productOptionId).toBe(102);
+      expect(result[2].salesCount).toBe(35);
       expect(
-        mockProductPopularitySnapshotRepository.findTop,
-      ).toHaveBeenCalledWith(count);
+        mockProductSalesRankingRepository.findRankByDate,
+      ).toHaveBeenCalledTimes(3);
     });
 
     it('count가 0 이하이면 INVALID_ARGUMENT 예외를 던진다', async () => {
@@ -344,7 +344,7 @@ describe('ProductDomainService', () => {
       }
 
       expect(
-        mockProductPopularitySnapshotRepository.findTop,
+        mockProductSalesRankingRepository.findRankByDate,
       ).not.toHaveBeenCalled();
     });
   });
@@ -595,6 +595,91 @@ describe('ProductDomainService', () => {
       expect(option1.reservedStock).toBe(12); // 10 + 2
       expect(option2.reservedStock).toBe(8); // 5 + 3
       expect(mockProductOptionRepository.update).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('recordSales', () => {
+    it('given: 주문 아이템 배열이 주어짐 / when: recordSales 메서드를 호출함 / then: productSalesRankingRepository.recordSales가 호출됨', () => {
+      // given
+      const orderItems = [
+        new OrderItem(1, 1, 101, '상품1', 5000, 2, 10000, new Date()),
+        new OrderItem(2, 1, 102, '상품2', 3000, 3, 9000, new Date()),
+      ];
+
+      // when
+      productDomainService.recordSales(orderItems);
+
+      // then
+      expect(
+        mockProductSalesRankingRepository.recordSales,
+      ).toHaveBeenCalledWith(orderItems);
+      expect(
+        mockProductSalesRankingRepository.recordSales,
+      ).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getSalesRankingDays', () => {
+    it('given: count와 days가 주어짐 / when: getSalesRankingDays 메서드를 호출함 / then: N일간 판매 랭킹을 집계하여 반환함', async () => {
+      // given
+      const count = 5;
+      const days = 3;
+      const todayRank = [
+        new ProductSalesRanking(1, 10),
+        new ProductSalesRanking(2, 5),
+      ];
+      const yesterdayRank = [
+        new ProductSalesRanking(1, 8),
+        new ProductSalesRanking(3, 12),
+      ];
+      const twoDaysAgoRank = [
+        new ProductSalesRanking(2, 7),
+        new ProductSalesRanking(3, 3),
+      ];
+
+      mockProductSalesRankingRepository.findRankByDate
+        .mockResolvedValueOnce(todayRank)
+        .mockResolvedValueOnce(yesterdayRank)
+        .mockResolvedValueOnce(twoDaysAgoRank);
+
+      // when
+      const result = await productDomainService.getSalesRankingDays(
+        count,
+        days,
+      );
+
+      // then
+      expect(result).toHaveLength(3);
+      // productOptionId 1: 10 + 8 = 18
+      // productOptionId 3: 12 + 3 = 15
+      // productOptionId 2: 5 + 7 = 12
+      expect(result[0].productOptionId).toBe(1);
+      expect(result[0].salesCount).toBe(18);
+      expect(result[1].productOptionId).toBe(3);
+      expect(result[1].salesCount).toBe(15);
+      expect(result[2].productOptionId).toBe(2);
+      expect(result[2].salesCount).toBe(12);
+      expect(
+        mockProductSalesRankingRepository.findRankByDate,
+      ).toHaveBeenCalledTimes(3);
+    });
+
+    it('given: days가 30일 초과임 / when: getSalesRankingDays 메서드를 호출함 / then: INVALID_ARGUMENT 예외를 발생시킴', async () => {
+      // given
+      const count = 5;
+      const invalidDays = 31;
+
+      // when & then
+      await expect(
+        productDomainService.getSalesRankingDays(count, invalidDays),
+      ).rejects.toThrow();
+
+      try {
+        await productDomainService.getSalesRankingDays(count, invalidDays);
+      } catch (error) {
+        expect(error.name).toBe('DomainException');
+        expect(error.errorCode).toBe(ErrorCode.INVALID_ARGUMENT);
+      }
     });
   });
 });

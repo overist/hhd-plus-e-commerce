@@ -1,6 +1,7 @@
 import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
-import { ProductPopularitySnapshot } from '@/product/domain/entities/product-popularity-snapshot.entity';
+import { ProductSalesRanking } from '@/product/domain/entities/product-sales.vo';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
 
 /**
  * Product Repository Port
@@ -26,9 +27,18 @@ export abstract class IProductOptionRepository {
   abstract update(productOption: ProductOption): Promise<ProductOption>;
 }
 
-export abstract class IProductPopularitySnapshotRepository {
-  abstract findTop(count: number): Promise<ProductPopularitySnapshot[]>;
-  abstract create(
-    snapshot: ProductPopularitySnapshot,
-  ): Promise<ProductPopularitySnapshot>;
+/**
+ * ProductSalesRanking Repository Port
+ * 상품 판매 랭킹 데이터 접근 계약 (Redis)
+ */
+export abstract class IProductSalesRankingRepository {
+  /**
+   * 인기상품 랭킹 집계 (Redis Sorted Set)
+   */
+  abstract recordSales(orderItems: OrderItem[]): void;
+
+  /**
+   * 날짜별 인기상품 랭킹 조회 (Redis Sorted Set)
+   */
+  abstract findRankByDate(date: string): Promise<ProductSalesRanking[]>;
 }

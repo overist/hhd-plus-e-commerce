@@ -3,7 +3,6 @@ import { ProductModule } from '@/product/product.module';
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { OrderExpirationScheduler } from './order-expiration.scheduler';
-import { ProductPopularityScheduler } from './product-popularity.scheduler';
 
 /**
  * Scheduler Module
@@ -11,6 +10,6 @@ import { ProductPopularityScheduler } from './product-popularity.scheduler';
  */
 @Module({
   imports: [ScheduleModule.forRoot(), ProductModule, OrderModule],
-  providers: [ProductPopularityScheduler, OrderExpirationScheduler],
+  providers: [OrderExpirationScheduler],
 })
 export class SchedulerModule {}

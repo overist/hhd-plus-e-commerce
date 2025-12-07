@@ -25,8 +25,6 @@ describe('OrderDomainService', () => {
       create: jest.fn(),
       createMany: jest.fn(),
       findManyByOrderId: jest.fn(),
-      recordSales: jest.fn(),
-      findRankByDate: jest.fn(),
     } as any;
 
     service = new OrderDomainService(orderRepository, orderItemRepository);
@@ -338,79 +336,6 @@ describe('OrderDomainService', () => {
       // then
       expect(result).toEqual([]);
       expect(orderRepository.findManyByUserId).toHaveBeenCalledWith(userId);
-    });
-  });
-
-  describe('recordSales', () => {
-    it('given: 주문 아이템 배열이 주어짐 / when: recordSales 메서드를 호출함 / then: orderItemRepository.recordSales가 호출됨', () => {
-      // given
-      const orderItems = [
-        new OrderItem(1, 1, 101, '상품1', 5000, 2, 10000, new Date()),
-        new OrderItem(2, 1, 102, '상품2', 3000, 3, 9000, new Date()),
-      ];
-
-      // when
-      service.recordSales(orderItems);
-
-      // then
-      expect(orderItemRepository.recordSales).toHaveBeenCalledWith(orderItems);
-      expect(orderItemRepository.recordSales).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('getSalesRankingDays', () => {
-    it('given: count와 days가 주어짐 / when: getSalesRankingDays 메서드를 호출함 / then: N일간 판매 랭킹을 집계하여 반환함', async () => {
-      // given
-      const count = 5;
-      const days = 3;
-      const todayRank = [
-        { productOptionId: 1, salesCount: 10 },
-        { productOptionId: 2, salesCount: 5 },
-      ];
-      const yesterdayRank = [
-        { productOptionId: 1, salesCount: 8 },
-        { productOptionId: 3, salesCount: 12 },
-      ];
-      const twoDaysAgoRank = [
-        { productOptionId: 2, salesCount: 7 },
-        { productOptionId: 3, salesCount: 3 },
-      ];
-
-      orderItemRepository.findRankByDate
-        .mockResolvedValueOnce(todayRank)
-        .mockResolvedValueOnce(yesterdayRank)
-        .mockResolvedValueOnce(twoDaysAgoRank);
-
-      // when
-      const result = await service.getSalesRankingDays(count, days);
-
-      // then
-      expect(result).toHaveLength(3);
-      // productOptionId 1: 10 + 8 = 18
-      // productOptionId 3: 12 + 3 = 15
-      // productOptionId 2: 5 + 7 = 12
-      expect(result[0]).toEqual({ productOptionId: 1, salesCount: 18 });
-      expect(result[1]).toEqual({ productOptionId: 3, salesCount: 15 });
-      expect(result[2]).toEqual({ productOptionId: 2, salesCount: 12 });
-      expect(orderItemRepository.findRankByDate).toHaveBeenCalledTimes(3);
-    });
-
-    it('given: days가 30일 초과임 / when: getSalesRankingDays 메서드를 호출함 / then: INVALID_ARGUMENT 예외를 발생시킴', async () => {
-      // given
-      const count = 5;
-      const invalidDays = 31;
-
-      // when & then
-      await expect(
-        service.getSalesRankingDays(count, invalidDays),
-      ).rejects.toThrow();
-
-      try {
-        await service.getSalesRankingDays(count, invalidDays);
-      } catch (error) {
-        expect(error.name).toBe('DomainException');
-        expect(error.errorCode).toBe(ErrorCode.INVALID_ARGUMENT);
-      }
     });
   });
 });

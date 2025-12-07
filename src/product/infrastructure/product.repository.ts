@@ -1,19 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import {
-  Prisma,
-  product_options,
-  product_popularity_snapshot,
-  products,
-} from '@prisma/client';
+import { Injectable, Logger } from '@nestjs/common';
+import { Prisma, product_options, products } from '@prisma/client';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
+import { RedisService } from '@common/redis/redis.service';
 import {
   IProductRepository,
   IProductOptionRepository,
-  IProductPopularitySnapshotRepository,
+  IProductSalesRankingRepository,
 } from '../domain/interfaces/product.repository.interface';
 import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
-import { ProductPopularitySnapshot } from '@/product/domain/entities/product-popularity-snapshot.entity';
+import { ProductSalesRanking } from '@/product/domain/entities/product-sales.vo';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
 
 /**
  * Product Repository Implementation (Prisma)
@@ -205,102 +202,63 @@ export class ProductOptionRepository implements IProductOptionRepository {
 }
 
 /**
- * ProductPopularitySnapshot Repository Implementation (Prisma)
+ * ProductSalesRanking Repository Implementation (Redis)
+ * 실시간 판매 랭킹 집계/조회
  */
 @Injectable()
-export class ProductPopularitySnapshotRepository
-  implements IProductPopularitySnapshotRepository
+export class ProductSalesRankingRepository
+  implements IProductSalesRankingRepository
 {
-  constructor(private readonly prisma: PrismaService) {}
+  private static readonly SALES_RANKING_PREFIX = 'data:products:sales-rank';
+  private readonly logger = new Logger(ProductSalesRankingRepository.name);
 
-  private get prismaClient(): Prisma.TransactionClient | PrismaService {
-    return this.prisma.getClient();
+  constructor(private readonly redisService: RedisService) {}
+
+  private get redisClient() {
+    return this.redisService.getClient();
   }
 
-  // ANCHOR productPopularitySnapshot.findTop5
+  // ANCHOR recordSales (Redis)
   /**
-   * TODO: [성능 개선 필요] 비효율적인 ORDER BY 및 WHERE 절
-   * 원인:
-   * 1. 첫 번째 쿼리에서 created_at DESC 정렬로 최신 스냅샷 시간 조회
-   * 2. 두 번째 쿼리에서 해당 시간의 데이터를 rank ASC로 정렬 조회
-   * 3. WHERE created_at = ? 조건과 ORDER BY rank를 함께 사용하지만 복합 인덱스 부재
-   *
-   * 개선 방안:
-   * 1. 복합 인덱스 추가: (created_at DESC, rank ASC)
-   *    CREATE INDEX idx_snapshot_created_rank ON product_popularity_snapshot(created_at DESC, rank ASC);
-   * 2. 또는 단일 쿼리로 최적화:
-   *    SELECT * FROM (
-   *      SELECT *, ROW_NUMBER() OVER (PARTITION BY created_at ORDER BY rank ASC) as rn
-   *      FROM product_popularity_snapshot
-   *      WHERE created_at = (SELECT MAX(created_at) FROM product_popularity_snapshot)
-   *    ) WHERE rn <= count;
-   *
-   * 예상 효과: 인덱스 스캔으로 O(log n) 시간 복잡도 개선
+   * 인기상품 랭킹 집계 - Redis Sorted Set 사용
+   * @param orderItems 주문 아이템 엔티티 배열
    */
-  async findTop(count: number): Promise<ProductPopularitySnapshot[]> {
-    // 가장 최신 스냅샷의 생성 시간 찾기
-    const latestSnapshot =
-      await this.prismaClient.product_popularity_snapshot.findFirst({
-        orderBy: { created_at: 'desc' },
-        select: { created_at: true },
-      });
+  recordSales(orderItems: OrderItem[]): void {
+    const YYYYMMDD = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const key = `${ProductSalesRankingRepository.SALES_RANKING_PREFIX}:${YYYYMMDD}`;
 
-    if (!latestSnapshot) {
-      return [];
-    }
-
-    // 가장 최신 스냅샷만 추출하여 rank 순으로 정렬하여 Top N 반환
-    const records =
-      await this.prismaClient.product_popularity_snapshot.findMany({
-        where: { created_at: latestSnapshot.created_at },
-        orderBy: { rank: 'asc' },
-        take: count,
-      });
-
-    return records.map((record) => this.mapToDomain(record));
-  }
-
-  // ANCHOR productPopularitySnapshot.create
-  async create(
-    snapshot: ProductPopularitySnapshot,
-  ): Promise<ProductPopularitySnapshot> {
-    const created = await this.prismaClient.product_popularity_snapshot.create({
-      data: {
-        product_id: snapshot.productId,
-        product_name: snapshot.productName,
-        price: snapshot.price,
-        category: snapshot.category,
-        rank: snapshot.rank,
-        sales_count: snapshot.salesCount,
-        last_sold_at: snapshot.lastSoldAt,
-        created_at: snapshot.createdAt,
-      },
+    // 비동기로 각 상품의 판매량 증가 (fire-and-forget)
+    Promise.all(
+      orderItems.map((item) => {
+        this.redisClient.zincrby(
+          key,
+          item.quantity,
+          item.productOptionId.toString(),
+        );
+        this.redisClient.expire(key, 60 * 60 * 24 * 31); // 31일
+      }),
+    ).catch((error) => {
+      this.logger.error(
+        `인기상품 랭킹 업데이트 실패 - key: ${key}`,
+        error instanceof Error ? error.stack : error,
+      );
     });
-    return this.mapToDomain(created);
   }
 
+  // ANCHOR findRankByDate (Redis)
   /**
-   * Helper 도메인 맵퍼
+   * 날짜별 인기상품 랭킹 조회 - Redis Sorted Set 사용
    */
-  private mapToDomain(
-    record: product_popularity_snapshot,
-  ): ProductPopularitySnapshot {
-    const maybeDecimal = record.price as { toNumber?: () => number };
-    const price =
-      typeof maybeDecimal?.toNumber === 'function'
-        ? maybeDecimal.toNumber()
-        : Number(record.price);
+  async findRankByDate(YYYYMMDD: string): Promise<ProductSalesRanking[]> {
+    const key = `${ProductSalesRankingRepository.SALES_RANKING_PREFIX}:${YYYYMMDD}`;
+    const results = await this.redisClient.zrevrange(key, 0, -1, 'WITHSCORES');
 
-    return new ProductPopularitySnapshot(
-      record.id,
-      record.product_id,
-      record.product_name,
-      price,
-      record.category,
-      record.rank,
-      record.sales_count,
-      record.last_sold_at,
-      record.created_at,
-    );
+    const rankings: ProductSalesRanking[] = [];
+    for (let i = 0; i < results.length; i += 2) {
+      rankings.push(
+        new ProductSalesRanking(Number(results[i]), Number(results[i + 1])),
+      );
+    }
+    return rankings;
   }
 }

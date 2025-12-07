@@ -3,11 +3,12 @@ import { MutexManager } from '@common/mutex-manager/mutex-manager';
 import { Product } from '../domain/entities/product.entity';
 import {
   IProductOptionRepository,
-  IProductPopularitySnapshotRepository,
+  IProductSalesRankingRepository,
   IProductRepository,
 } from '../domain/interfaces/product.repository.interface';
 import { ProductOption } from '../domain/entities/product-option.entity';
-import { ProductPopularitySnapshot } from '../domain/entities/product-popularity-snapshot.entity';
+import { ProductSalesRanking } from '../domain/entities/product-sales.vo';
+import { OrderItem } from '@/order/domain/entities/order-item.entity';
 
 /**
  * Product Repository Implementation (In-Memory)
@@ -121,52 +122,46 @@ export class ProductOptionRepository implements IProductOptionRepository {
 }
 
 /**
- * ProductPopularitySnapshot Repository Implementation (In-Memory)
+ * ProductSalesRanking Repository Implementation (In-Memory)
+ * 판매 랭킹 집계/조회
  */
 @Injectable()
-export class ProductPopularitySnapshotRepository
-  implements IProductPopularitySnapshotRepository
+export class ProductSalesRankingRepository
+  implements IProductSalesRankingRepository
 {
-  private snapshots: Map<number, ProductPopularitySnapshot> = new Map();
-  private currentId = 1;
+  private salesRankings: Map<string, Map<number, number>> = new Map(); // date -> productOptionId -> salesCount
 
-  // ANCHOR productPopularitySnapshot.findTop5
-  async findTop(count: number): Promise<ProductPopularitySnapshot[]> {
-    // 스냅샷이 없으면 빈 배열 반환
-    if (this.snapshots.size === 0) {
+  // ANCHOR recordSales (In-Memory)
+  /**
+   * 인기상품 랭킹 집계
+   * @param orderItems 주문 아이템 엔티티 배열
+   */
+  recordSales(orderItems: OrderItem[]): void {
+    const YYYYMMDD = new Date().toISOString().split('T')[0].replace(/-/g, '');
+
+    if (!this.salesRankings.has(YYYYMMDD)) {
+      this.salesRankings.set(YYYYMMDD, new Map());
+    }
+
+    const dailyRanking = this.salesRankings.get(YYYYMMDD)!;
+    for (const item of orderItems) {
+      const currentCount = dailyRanking.get(item.productOptionId) || 0;
+      dailyRanking.set(item.productOptionId, currentCount + item.quantity);
+    }
+  }
+
+  // ANCHOR findRankByDate (In-Memory)
+  async findRankByDate(YYYYMMDD: string): Promise<ProductSalesRanking[]> {
+    const dailyRanking = this.salesRankings.get(YYYYMMDD);
+    if (!dailyRanking) {
       return [];
     }
 
-    // 가장 최신 스냅샷의 생성 시간 찾기
-    const allSnapshots = Array.from(this.snapshots.values());
-    const latestCreatedAt = allSnapshots.reduce(
-      (max, s) => (s.createdAt > max ? s.createdAt : max),
-      allSnapshots[0].createdAt,
-    );
-
-    // 가장 최신 스냅샷만 추출하여 rank 순으로 정렬하여 Top 5 반환
-    return allSnapshots
-      .filter((s) => s.createdAt.getTime() === latestCreatedAt.getTime())
-      .sort((a, b) => a.rank - b.rank)
-      .slice(0, count);
-  }
-
-  // ANCHOR productPopularitySnapshot.create
-  async create(
-    snapshot: ProductPopularitySnapshot,
-  ): Promise<ProductPopularitySnapshot> {
-    const newSnapshot = new ProductPopularitySnapshot(
-      this.currentId++,
-      snapshot.productId,
-      snapshot.productName,
-      snapshot.price,
-      snapshot.category,
-      snapshot.rank,
-      snapshot.salesCount,
-      snapshot.lastSoldAt,
-      snapshot.createdAt,
-    );
-    this.snapshots.set(newSnapshot.id, newSnapshot);
-    return newSnapshot;
+    return Array.from(dailyRanking.entries())
+      .map(
+        ([productOptionId, salesCount]) =>
+          new ProductSalesRanking(productOptionId, salesCount),
+      )
+      .sort((a, b) => b.salesCount - a.salesCount);
   }
 }

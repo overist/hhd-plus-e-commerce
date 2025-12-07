@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ProductDomainService } from '@/product/domain/services/product.service';
-import { OrderDomainService } from '@/order/domain/services/order.service';
 import {
   GetTopProductsQuery,
   GetTopProductsResult,
@@ -8,10 +7,7 @@ import {
 
 @Injectable()
 export class GetTopProductsUseCase {
-  constructor(
-    private readonly orderService: OrderDomainService,
-    private readonly productService: ProductDomainService,
-  ) {}
+  constructor(private readonly productService: ProductDomainService) {}
 
   /**
    * ANCHOR 인기 상품 조회
@@ -21,7 +17,7 @@ export class GetTopProductsUseCase {
     query: GetTopProductsQuery,
   ): Promise<GetTopProductsResult[]> {
     // 1. Redis에서 N일간 판매 랭킹 조회
-    const salesRankings = await this.orderService.getSalesRankingDays(
+    const salesRankings = await this.productService.getSalesRankingDays(
       query.count,
       query.dateRangeDays,
     );
