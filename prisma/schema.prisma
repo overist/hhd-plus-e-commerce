@@ -97,24 +97,6 @@ model product_options {
   @@index([product_id], map: "product_id")
 }
 
-model product_popularity_snapshot {
-  id           Int       @id @default(autoincrement())
-  product_id   Int
-  product_name String    @db.VarChar(255)
-  price        Decimal   @db.Decimal(13, 0)
-  category     String    @db.VarChar(100)
-  rank         Int
-  sales_count  Int
-  last_sold_at DateTime? @db.Timestamp(0)
-  created_at   DateTime  @default(now()) @db.Timestamp(0)
-  products     products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "product_popularity_snapshot_ibfk_1")
-
-  @@index([created_at], map: "idx_created_at")
-  @@index([rank], map: "idx_rank")
-  @@index([product_id], map: "product_id")
-  @@index([created_at(sort: Desc), rank], map: "idx_snapshot_created_rank")
-}
-
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model products {
   id                          Int                           @id @default(autoincrement())
@@ -126,7 +108,6 @@ model products {
   created_at                  DateTime                      @default(now()) @db.Timestamp(0)
   updated_at                  DateTime                      @default(now()) @db.Timestamp(0)
   product_options             product_options[]
-  product_popularity_snapshot product_popularity_snapshot[]
 
   @@index([id], map: "idx_id")
 }

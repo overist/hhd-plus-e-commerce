@@ -140,23 +140,6 @@ CREATE TABLE user_coupons (
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- // ANCHOR Product Popularity Snapshot Table: 인기 상품 캐시 (배치 생성)
-CREATE TABLE product_popularity_snapshot (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    product_id INT NOT NULL,
-    product_name VARCHAR(255) NOT NULL,
-    price DECIMAL(13, 0) NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    `rank` INT NOT NULL,
-    sales_count INT NOT NULL,
-    last_sold_at TIMESTAMP NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_created_at (created_at),
-    INDEX idx_rank (`rank`),
-    INDEX idx_snapshot_created_rank (created_at DESC, `rank` ASC) COMMENT '인기 상품 조회 최적화: WHERE created_at + ORDER BY rank',
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- // ANCHOR Transmission Failure Log Table: 외부 데이터 전송 실패 로그
 CREATE TABLE transaction_out_failure_log (
     id INT AUTO_INCREMENT PRIMARY KEY,

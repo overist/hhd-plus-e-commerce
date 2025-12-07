@@ -124,7 +124,6 @@ export async function cleanupDatabase(prisma: PrismaService): Promise<void> {
   // 모든 테이블의 데이터 삭제
   const tables = [
     'transaction_out_failure_log',
-    'product_popularity_snapshot',
     'user_coupons',
     'order_items',
     'orders',
