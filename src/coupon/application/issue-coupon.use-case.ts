@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
-import {
-  CouponRedisService,
-  CouponIssueResult,
-} from '@/coupon/infrastructure/coupon.redis.service';
+import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { IssueCouponCommand, IssueCouponResult } from './dto/issue-coupon.dto';
-import { ErrorCode, ApplicationException } from '@common/exception';
 
 @Injectable()
 export class IssueCouponUseCase {
@@ -22,37 +18,14 @@ export class IssueCouponUseCase {
    */
   async issueCoupon(cmd: IssueCouponCommand): Promise<IssueCouponResult> {
     // Redis Lua 스크립트로 원자적 발급 처리
-    const result = await this.couponRedisService.issueCoupon(
+    const userCoupon = await this.couponRedisService.issueCoupon(
       cmd.userId,
       cmd.couponId,
     );
 
-    // 에러 처리
-    if (!result.success) {
-      this.throwApplicationException(result);
-    }
-
     // 쿠폰 정보 조회 (응답용)
-    const coupon = await this.couponService.getCoupon(cmd.couponId);
+    const coupon = await this.couponRedisService.getCachedCoupon(cmd.couponId);
 
-    return IssueCouponResult.fromRedisResult(result, coupon);
-  }
-
-  /**
-   * Redis 발급 결과를 애플리케이션 예외로 변환
-   */
-  private throwApplicationException(result: CouponIssueResult): never {
-    switch (result.errorCode) {
-      case 'COUPON_NOT_FOUND':
-        throw new ApplicationException(ErrorCode.COUPON_NOT_FOUND);
-      case 'ALREADY_ISSUED':
-        throw new ApplicationException(ErrorCode.ALREADY_ISSUED);
-      case 'COUPON_SOLD_OUT':
-        throw new ApplicationException(ErrorCode.COUPON_SOLD_OUT);
-      case 'EXPIRED_COUPON':
-        throw new ApplicationException(ErrorCode.EXPIRED_COUPON);
-      default:
-        throw new ApplicationException(ErrorCode.COUPON_NOT_FOUND);
-    }
+    return IssueCouponResult.fromDomain(userCoupon, coupon);
   }
 }

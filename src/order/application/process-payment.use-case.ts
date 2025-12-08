@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderDomainService } from '@/order/domain/services/order.service';
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
@@ -6,15 +7,23 @@ import { UserDomainService } from '@/user/domain/services/user.service';
 import { ProductDomainService } from '@/product/domain/services/product.service';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { ApplicationException, ErrorCode } from '@common/exception';
+
+// dto
 import {
   ProcessPaymentCommand,
   ProcessPaymentResult,
 } from './dto/process-payment.dto';
+
+// domain entities
 import { OrderItem } from '../domain/entities/order-item.entity';
 import { Order } from '../domain/entities/order.entity';
+import { Coupon } from '@/coupon/domain/entities/coupon.entity';
+import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
 
 @Injectable()
 export class ProcessPaymentUseCase {
+  private readonly logger = new Logger(ProcessPaymentUseCase.name);
+
   constructor(
     private readonly orderService: OrderDomainService,
     private readonly productService: ProductDomainService,
@@ -27,63 +36,38 @@ export class ProcessPaymentUseCase {
   /**
    * ANCHOR 결제 처리
    * Redis를 활용한 쿠폰 사용 + 트랜잭션으로 결제 처리 + 재고 확정을 처리
-   * 유저 포인트 차감은 낙관적 잠금이므로 트랜잭션 밖에서 처리하고,
-   * 실패 시 보상 트랜잭션을 통해 쿠폰/주문/재고를 롤백
    */
   async processPayment(
     cmd: ProcessPaymentCommand,
   ): Promise<ProcessPaymentResult> {
-    let appliedCouponId: number | null = null;
     let order: Order;
     let orderItems: OrderItem[] = [];
-    let discountRate = 0;
-    let couponUsedAt: Date | null = null;
-    let couponExpiredAt: Date | null = null;
-    let dbTransactionCompleted = false;
+    let coupon: Coupon;
+    let userCoupon: UserCoupon;
 
     try {
       // 1단계: Redis에서 쿠폰 사용 처리 (원자적)
       if (cmd.couponId) {
-        const couponUseResult = await this.couponRedisService.useCoupon(
+        coupon = await this.couponRedisService.getCachedCoupon(cmd.couponId);
+        userCoupon = await this.couponRedisService.useUserCoupon(
           cmd.userId,
           cmd.couponId,
           cmd.orderId,
         );
-
-        if (!couponUseResult.success) {
-          this.throwCouponException(couponUseResult.errorCode!);
-        }
-
-        appliedCouponId = cmd.couponId;
-        discountRate = couponUseResult.coupon!.discountRate;
-        couponUsedAt = couponUseResult.userCoupon!.usedAt;
-        couponExpiredAt = couponUseResult.userCoupon!.expiredAt;
       }
 
-      // 2단계: 트랜잭션 - 주문 상태 변경 + 재고 확정 + 쿠폰 사용 정보 DB 저장
+      // 2단계: 트랜잭션 - 주문 상태 변경 + 재고 확정 + 쿠폰 DB 저장
       await this.prisma.runInTransaction(async () => {
         order = await this.orderService.getOrder(cmd.orderId);
         order.validateOwnedBy(cmd.userId);
 
-        // 쿠폰 할인 적용
-        if (appliedCouponId && discountRate > 0) {
-          const discountAmount = Math.floor(
-            (order.totalAmount * discountRate) / 100,
-          );
-          order.applyCoupon(appliedCouponId, discountAmount);
-
-          // 쿠폰 사용 정보를 DB에 저장 (Redis → DB 동기화)
-          const newUserCoupon = await this.couponService.issueCouponToUser(
-            cmd.userId,
-            await this.couponService.getCoupon(appliedCouponId),
-          );
-          newUserCoupon.orderId = cmd.orderId;
-          newUserCoupon.usedAt = couponUsedAt!;
-          newUserCoupon.expiredAt = couponExpiredAt!;
-          await this.couponService.updateUserCoupon(newUserCoupon);
+        // 쿠폰 할인 적용, Redis->DB 유저쿠폰 동기화
+        if (cmd.couponId && userCoupon) {
+          order.applyCoupon(coupon.id, coupon.discountRate); // TODO 정말 레디스 pkid를 db pkid로 삼아도 될지?
+          await this.couponService.createUserCoupon(userCoupon);
         }
 
-        // 결제 처리
+        // 주문 상태 업데이트
         order.pay();
         await this.orderService.updateOrder(order);
 
@@ -110,14 +94,13 @@ export class ProcessPaymentUseCase {
       const result = ProcessPaymentResult.from(order!, user);
       return result;
     } catch (error) {
-      // 보상 트랜잭션
-      if (appliedCouponId) {
-        // Redis 쿠폰 사용은 항상 취소 (1단계 성공 후 실패한 경우)
+      // 1단계 쿠폰 사용 후 2단계 트랜잭션 실패 시 Redis 쿠폰 취소
+      if (cmd.couponId) {
         await this.couponRedisService
-          .cancelCouponUse(cmd.userId, appliedCouponId)
+          .cancelCouponUse(cmd.userId, cmd.couponId)
           .catch((e) =>
-            console.error(
-              `Redis 쿠폰 취소 실패 - couponId: ${appliedCouponId}`,
+            this.logger.error(
+              `Redis 쿠폰 취소 실패 - couponId: ${cmd.couponId}`,
               e,
             ),
           );
@@ -138,23 +121,6 @@ export class ProcessPaymentUseCase {
       throw error;
     }
   }
-
-  /**
-   * 쿠폰 사용 실패 시 예외 처리
-   */
-  private throwCouponException(
-    errorCode: 'USER_COUPON_NOT_FOUND' | 'ALREADY_USED' | 'EXPIRED_COUPON',
-  ): never {
-    switch (errorCode) {
-      case 'USER_COUPON_NOT_FOUND':
-        throw new ApplicationException(ErrorCode.COUPON_NOT_FOUND);
-      case 'ALREADY_USED':
-        throw new ApplicationException(ErrorCode.ALREADY_USED);
-      case 'EXPIRED_COUPON':
-        throw new ApplicationException(ErrorCode.EXPIRED_COUPON);
-    }
-  }
-
   /**
    * DB 트랜잭션 보상 (잔액 차감 실패 시)
    * 주문 상태 복원 + 재고 복원 + DB 쿠폰 삭제

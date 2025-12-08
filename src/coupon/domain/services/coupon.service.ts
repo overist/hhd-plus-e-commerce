@@ -78,28 +78,9 @@ export class CouponDomainService {
   }
 
   /**
-   * ANCHOR 쿠폰 발급
+   * ANCHOR 사용자 쿠폰 생성 (레디스 -> DB 동기화용)
    */
-  async issueCouponToUser(userId: number, coupon: Coupon): Promise<UserCoupon> {
-    // 중복 발급 여부 검증
-    const already = await this.userCouponRepository.findByUserCoupon(
-      userId,
-      coupon.id,
-    );
-    if (already) {
-      throw new DomainException(ErrorCode.ALREADY_ISSUED);
-    }
-
-    // 쿠폰 발급 가능 여부 확인 (수량 및 만료일)
-    coupon.validateIssuable();
-
-    // 쿠폰 발급 처리 (도메인 규칙에 따라 쿠폰 수량 차감)
-    coupon.issue();
-    await this.couponRepository.update(coupon); // save
-
-    const userCoupon = UserCoupon.issue(userId, coupon);
-    const savedUserCoupon = await this.userCouponRepository.create(userCoupon); // save
-
-    return savedUserCoupon;
+  async createUserCoupon(userCoupon: UserCoupon): Promise<UserCoupon> {
+    return await this.userCouponRepository.create(userCoupon);
   }
 }
