@@ -21,6 +21,7 @@ import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-
 
 // Event Listeners
 import { OnOrderProcessedListener } from '@/order/application/listeners/on-order-processed.listener';
+import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
 
 /**
  * Order Module
@@ -53,6 +54,7 @@ import { OnOrderProcessedListener } from '@/order/application/listeners/on-order
 
     // Event Listeners
     OnOrderProcessedListener,
+    OnOrderFailListener,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],
 })

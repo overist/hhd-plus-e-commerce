@@ -22,6 +22,7 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
 
 import { OnOrderProcessingListener } from './application/listeners/on-order-processing.listener';
 import { OnOrderProcessedListener } from './application/listeners/on-order-processed.listener';
+import { OnOrderFailListener } from './application/listeners/on-order-fail.listener';
 
 /**
  * Product Module
@@ -60,6 +61,7 @@ import { OnOrderProcessedListener } from './application/listeners/on-order-proce
     // Event Listeners
     OnOrderProcessingListener,
     OnOrderProcessedListener,
+    OnOrderFailListener, // 보상 트랜잭션 리스너
   ],
   exports: [
     ProductDomainService,

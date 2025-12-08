@@ -13,6 +13,7 @@ import {
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { CouponController } from '@/coupon/presentation/coupon.controller';
 import { OnOrderProcessingListener } from './application/listeners/on-order-processing.listener';
+import { OnOrderProcessingFailListener } from './application/listeners/on-order-fail.listener';
 
 /**
  * Coupon Module
@@ -45,6 +46,7 @@ import { OnOrderProcessingListener } from './application/listeners/on-order-proc
 
     // Event Listeners
     OnOrderProcessingListener,
+    OnOrderProcessingFailListener,
   ],
   exports: [
     CouponDomainService,
