@@ -20,6 +20,7 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
 
 // Event Listeners
 
+import { OnOrderProcessingListener } from './application/listeners/on-order-processing.listener';
 import { OnOrderProcessedListener } from './application/listeners/on-order-processed.listener';
 
 /**
@@ -57,6 +58,7 @@ import { OnOrderProcessedListener } from './application/listeners/on-order-proce
     UpdateStockUseCase,
 
     // Event Listeners
+    OnOrderProcessingListener,
     OnOrderProcessedListener,
   ],
   exports: [

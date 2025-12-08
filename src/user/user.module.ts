@@ -13,6 +13,9 @@ import {
 } from '@/user/infrastructure/user.repository';
 import { UserController } from '@/user/presentation/user.controller';
 
+// Event Listeners
+import { OnOrderPaymentListener } from './application/listeners/on-order-payment.listener';
+
 /**
  * User Module
  * 사용자 및 잔액 관리 모듈
@@ -39,6 +42,9 @@ import { UserController } from '@/user/presentation/user.controller';
     GetBalanceUseCase,
     GetBalanceLogsUseCase,
     ChargeBalanceUseCase,
+
+    // Event Listeners
+    OnOrderPaymentListener,
   ],
   exports: [
     UserDomainService,
