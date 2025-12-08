@@ -1,9 +1,11 @@
 // core
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 // event
 import { OrderProcessingEvent } from '@/order/application/events/order-processing.event';
+import { OrderProcessingFailEvent } from '@/order/application/events/order-processing-fail.event';
 
 // service
 import { ProductDomainService } from '@/product/domain/services/product.service';
@@ -13,10 +15,14 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
  *
  * 수신: order.processing
  * 반환: ConfirmStockByOrderResult (동기적 응답)
+ * 실패: order.processing.fail 이벤트 발행
  */
 @Injectable()
 export class OnOrderProcessingListener {
-  constructor(private readonly productService: ProductDomainService) {}
+  constructor(
+    private readonly productService: ProductDomainService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
   private readonly logger = new Logger(OnOrderProcessingListener.name);
 
   @OnEvent(OrderProcessingEvent.EVENT_NAME)
@@ -44,17 +50,29 @@ export class OnOrderProcessingListener {
 
       return {
         listenerName: 'ConfirmStockByOrder',
-        success: true,
       };
     } catch (error) {
       this.logger.error(
         `[onOrderProcessing] 재고 확정 차감 실패 - orderId: ${orderId}, error: ${error}`,
       );
 
+      // order.processing.fail 이벤트 발행 (다른 리스너들의 보상 트랜잭션 트리거) - 동기적으로 완료 대기
+      await this.eventEmitter.emitAsync(
+        OrderProcessingFailEvent.EVENT_NAME,
+        new OrderProcessingFailEvent(
+          orderId,
+          event.userId,
+          event.couponId,
+          event.order,
+          orderItems,
+          'ConfirmStockByOrder',
+          error,
+        ),
+      );
+
       return {
         listenerName: 'ConfirmStockByOrder',
-        success: false,
-        error: error instanceof Error ? error : new Error(String(error)),
+        error: error as Error,
       };
     }
   }
@@ -62,6 +80,5 @@ export class OnOrderProcessingListener {
 
 export interface ConfirmStockByOrderResult {
   listenerName: 'ConfirmStockByOrder';
-  success: boolean;
   error?: Error;
 }

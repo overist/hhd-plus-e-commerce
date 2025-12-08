@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 // event
 import { OrderPaymentEvent } from '@/order/application/events/order-payment.event';
+import { OrderPaymentFailEvent } from '@/order/application/events/order-payment-fail.event';
 
 // service
 import { UserDomainService } from '@/user/domain/services/user.service';
@@ -30,7 +31,7 @@ export class OnOrderPaymentListener {
   async handleUserBalanceDeductByOrder(
     event: OrderPaymentEvent,
   ): Promise<UserBalanceDeductByOrderResult> {
-    const { order, orderItems, orderId, userId, couponId } = event;
+    const { order, userId } = event;
 
     try {
       this.logger.log(
@@ -50,8 +51,7 @@ export class OnOrderPaymentListener {
       );
 
       return {
-        listenerName: 'UserBalanceDeductResult',
-        success: true,
+        listenerName: 'UserBalanceDeductByOrder',
         user,
       };
     } catch (error) {
@@ -60,10 +60,23 @@ export class OnOrderPaymentListener {
         error,
       );
 
+      // order.payment.fail 이벤트 발행 (보상 트랜잭션 트리거) - 동기적으로 완료 대기
+      await this.eventEmitter.emitAsync(
+        OrderPaymentFailEvent.EVENT_NAME,
+        new OrderPaymentFailEvent(
+          event.orderId,
+          userId,
+          event.couponId,
+          order,
+          event.orderItems,
+          'UserBalanceDeductByOrder',
+          error,
+        ),
+      );
+
       return {
-        listenerName: 'UserBalanceDeductResult',
-        success: false,
-        error: error instanceof Error ? error : new Error(String(error)),
+        listenerName: 'UserBalanceDeductByOrder',
+        error: error as Error,
       };
     }
   }
@@ -73,8 +86,7 @@ export class OnOrderPaymentListener {
  * 잔액 차감 결과 (동기적 응답용)
  */
 export interface UserBalanceDeductByOrderResult {
-  listenerName: 'UserBalanceDeductResult';
-  success: boolean;
-  error?: Error;
+  listenerName: 'UserBalanceDeductByOrder';
   user?: User;
+  error?: Error;
 }
