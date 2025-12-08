@@ -23,7 +23,9 @@ export class OnOrderProcessingListener {
     private readonly productService: ProductDomainService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
-  private readonly logger = new Logger(OnOrderProcessingListener.name);
+  private readonly logger = new Logger(
+    'product:' + OnOrderProcessingListener.name,
+  );
 
   @OnEvent(OrderProcessingEvent.EVENT_NAME)
   async handleConfirmStockByOrder(

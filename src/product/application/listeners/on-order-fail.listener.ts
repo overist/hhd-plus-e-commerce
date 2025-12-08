@@ -18,7 +18,7 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
 @Injectable()
 export class OnOrderFailListener {
   constructor(private readonly productService: ProductDomainService) {}
-  private readonly logger = new Logger(OnOrderFailListener.name);
+  private readonly logger = new Logger('product:' + OnOrderFailListener.name);
 
   /**
    * order.processing 실패 시 재고 롤백

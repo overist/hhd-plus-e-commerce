@@ -30,9 +30,14 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
   private subscriber: Redis;
 
-  /** getter (통합테스트 전용) */
+  /** @deprecated getter (통합테스트 전용) */
   getClient(): Redis {
     return this.client;
+  }
+
+  /** @deprecated getter for subscriber (통합테스트 전용) */
+  getSubscriber(): Redis {
+    return this.subscriber;
   }
 
   // 모듈 초기화

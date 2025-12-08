@@ -25,7 +25,7 @@ export class OnOrderPaymentListener {
     private readonly userService: UserDomainService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
-  private readonly logger = new Logger(OnOrderPaymentListener.name);
+  private readonly logger = new Logger('user:' + OnOrderPaymentListener.name);
 
   @OnEvent(OrderPaymentEvent.EVENT_NAME)
   async handleUserBalanceDeductByOrder(
@@ -55,9 +55,8 @@ export class OnOrderPaymentListener {
         user,
       };
     } catch (error) {
-      this.logger.error(
-        `[onOrderPayment] 잔액 차감 실패 - orderId: ${order.id}, userId: ${userId}`,
-        error,
+      this.logger.warn(
+        `[onOrderPayment] 잔액 차감 실패 - orderId: ${order.id}, userId: ${userId}, reason: ${error.message}`,
       );
 
       // order.payment.fail 이벤트 발행 (보상 트랜잭션 트리거) - 동기적으로 완료 대기

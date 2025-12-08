@@ -12,7 +12,9 @@ import { OrderProcessedEvent } from '../events/order-processed.event';
  */
 @Injectable()
 export class OnOrderProcessedListener {
-  private readonly logger = new Logger(OnOrderProcessedListener.name);
+  private readonly logger = new Logger(
+    'order:' + OnOrderProcessedListener.name,
+  );
 
   @OnEvent(OrderProcessedEvent.EVENT_NAME)
   async handle(event: OrderProcessedEvent): Promise<void> {

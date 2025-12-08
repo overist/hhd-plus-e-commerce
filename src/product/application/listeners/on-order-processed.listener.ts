@@ -12,7 +12,9 @@ import { OnEvent } from '@nestjs/event-emitter';
 @Injectable()
 export class OnOrderProcessedListener {
   constructor(private readonly productService: ProductDomainService) {}
-  private readonly logger = new Logger(OnOrderProcessedListener.name);
+  private readonly logger = new Logger(
+    'product:' + OnOrderProcessedListener.name,
+  );
 
   @OnEvent(UserBalanceDeductByOrderEvent.EVENT_NAME)
   async handle(event: UserBalanceDeductByOrderEvent): Promise<void> {

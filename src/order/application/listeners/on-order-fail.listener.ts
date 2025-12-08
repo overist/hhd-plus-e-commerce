@@ -11,7 +11,7 @@ import { OrderDomainService } from '@/order/domain/services/order.service';
  */
 @Injectable()
 export class OnOrderFailListener {
-  private readonly logger = new Logger(OnOrderFailListener.name);
+  private readonly logger = new Logger('order:' + OnOrderFailListener.name);
 
   constructor(private readonly orderService: OrderDomainService) {}
 

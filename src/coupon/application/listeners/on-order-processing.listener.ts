@@ -29,7 +29,9 @@ export class OnOrderProcessingListener {
     private readonly couponService: CouponDomainService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
-  private readonly logger = new Logger(OnOrderProcessingListener.name);
+  private readonly logger = new Logger(
+    'coupon:' + OnOrderProcessingListener.name,
+  );
 
   @OnEvent(OrderProcessingEvent.EVENT_NAME)
   async handleUseUserCouponByOrder(

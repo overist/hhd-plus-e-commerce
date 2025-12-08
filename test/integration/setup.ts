@@ -150,10 +150,20 @@ export async function cleanupDatabase(prisma: PrismaService): Promise<void> {
  * 모든 통합 테스트 종료 후 한 번만 실행
  */
 export async function teardownIntegrationTest(): Promise<void> {
-  // redisLockService를 먼저 정리 (컨테이너 종료 전에 클라이언트 연결 해제)
+  // Redis 클라이언트를 먼저 정리 (컨테이너 종료 전에 클라이언트 연결 해제)
+  // disconnect()로 강제 종료하여 pending 요청이 있어도 즉시 종료
   if (redisLockService) {
     try {
-      await redisLockService.onModuleDestroy();
+      const client = redisLockService.getClient();
+      const subscriber = redisLockService.getSubscriber();
+      if (subscriber) {
+        subscriber.removeAllListeners('error');
+        await subscriber.quit().catch(() => {});
+      }
+      if (client) {
+        client.removeAllListeners('error');
+        await client.quit().catch(() => {});
+      }
     } catch {
       // 이미 연결이 끊어진 경우 무시
     }
@@ -163,7 +173,11 @@ export async function teardownIntegrationTest(): Promise<void> {
   // redisService 정리
   if (redisService) {
     try {
-      await redisService.onModuleDestroy();
+      const client = redisService.getClient();
+      if (client) {
+        client.removeAllListeners('error'); // 에러 이벤트 제거
+        await client.quit().catch(() => {}); // quit 실패 무시
+      }
     } catch {
       // 이미 연결이 끊어진 경우 무시
     }

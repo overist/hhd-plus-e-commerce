@@ -22,7 +22,9 @@ export class OnOrderProcessingFailListener {
     private readonly couponRedisService: CouponRedisService,
     private readonly couponService: CouponDomainService,
   ) {}
-  private readonly logger = new Logger(OnOrderProcessingFailListener.name);
+  private readonly logger = new Logger(
+    'coupon:' + OnOrderProcessingFailListener.name,
+  );
 
   /**
    * order.processing 실패 시 쿠폰 사용 롤백
