@@ -224,138 +224,38 @@ describe('CouponDomainService', () => {
     });
   });
 
-  describe('issueCouponToUser', () => {
-    it('사용자에게 쿠폰을 발급한다', async () => {
+  describe('createUserCoupon', () => {
+    it('사용자 쿠폰을 생성한다', async () => {
       // given
-      const userId = 100;
-      const coupon = new Coupon(
-        1,
-        '10% 할인',
-        10,
+      const userCoupon = new UserCoupon(
+        0,
         100,
-        50,
+        1,
+        null,
+        new Date(),
+        null,
         new Date('2025-12-31'),
         new Date(),
-        new Date(),
       );
-      const issuedUserCoupon = new UserCoupon(
+      const createdUserCoupon = new UserCoupon(
         1,
-        userId,
-        coupon.id,
+        100,
+        1,
         null,
-        new Date(),
+        userCoupon.createdAt,
         null,
-        coupon.expiredAt,
-        new Date(),
+        new Date('2025-12-31'),
+        userCoupon.updatedAt,
       );
-
-      mockUserCouponRepository.findByUserCoupon.mockResolvedValue(null);
-      mockCouponRepository.update.mockResolvedValue(coupon);
-      mockUserCouponRepository.create.mockResolvedValue(issuedUserCoupon);
+      mockUserCouponRepository.create.mockResolvedValue(createdUserCoupon);
 
       // when
-      const result = await couponDomainService.issueCouponToUser(
-        userId,
-        coupon,
-      );
+      const result = await couponDomainService.createUserCoupon(userCoupon);
 
       // then
-      expect(result).toBe(issuedUserCoupon);
-      expect(mockUserCouponRepository.findByUserCoupon).toHaveBeenCalledWith(
-        userId,
-        coupon.id,
-      );
-      expect(coupon.issuedQuantity).toBe(51); // 50 + 1
-      expect(mockCouponRepository.update).toHaveBeenCalledWith(coupon);
-      expect(mockUserCouponRepository.create).toHaveBeenCalled();
-    });
-
-    it('이미 발급받은 쿠폰을 다시 발급받으려 하면 ALREADY_ISSUED 예외를 던진다', async () => {
-      // given
-      const userId = 100;
-      const coupon = new Coupon(
-        1,
-        '10% 할인',
-        10,
-        100,
-        50,
-        new Date('2025-12-31'),
-        new Date(),
-        new Date(),
-      );
-      const existingUserCoupon = new UserCoupon(
-        1,
-        userId,
-        coupon.id,
-        null,
-        new Date(),
-        null,
-        coupon.expiredAt,
-        new Date(),
-      );
-
-      mockUserCouponRepository.findByUserCoupon.mockResolvedValue(
-        existingUserCoupon,
-      );
-
-      // when & then
-      await expect(
-        couponDomainService.issueCouponToUser(userId, coupon),
-      ).rejects.toThrow(DomainException);
-
-      try {
-        await couponDomainService.issueCouponToUser(userId, coupon);
-      } catch (error) {
-        expect(error).toBeInstanceOf(DomainException);
-        expect((error as DomainException).errorCode).toBe(
-          ErrorCode.ALREADY_ISSUED,
-        );
-      }
-
-      expect(mockUserCouponRepository.findByUserCoupon).toHaveBeenCalledWith(
-        userId,
-        coupon.id,
-      );
-      expect(mockCouponRepository.update).not.toHaveBeenCalled();
-      expect(mockUserCouponRepository.create).not.toHaveBeenCalled();
-    });
-
-    it('품절된 쿠폰을 발급받으려 하면 COUPON_SOLD_OUT 예외를 던진다', async () => {
-      // given
-      const userId = 100;
-      const soldOutCoupon = new Coupon(
-        1,
-        '품절 쿠폰',
-        10,
-        100,
-        100,
-        new Date('2025-12-31'),
-        new Date(),
-        new Date(),
-      );
-
-      mockUserCouponRepository.findByUserCoupon.mockResolvedValue(null);
-
-      // when & then
-      await expect(
-        couponDomainService.issueCouponToUser(userId, soldOutCoupon),
-      ).rejects.toThrow(DomainException);
-
-      try {
-        await couponDomainService.issueCouponToUser(userId, soldOutCoupon);
-      } catch (error) {
-        expect(error).toBeInstanceOf(DomainException);
-        expect((error as DomainException).errorCode).toBe(
-          ErrorCode.COUPON_SOLD_OUT,
-        );
-      }
-
-      expect(mockUserCouponRepository.findByUserCoupon).toHaveBeenCalledWith(
-        userId,
-        soldOutCoupon.id,
-      );
-      expect(mockCouponRepository.update).not.toHaveBeenCalled();
-      expect(mockUserCouponRepository.create).not.toHaveBeenCalled();
+      expect(result).toBe(createdUserCoupon);
+      expect(result.id).toBe(1);
+      expect(mockUserCouponRepository.create).toHaveBeenCalledWith(userCoupon);
     });
   });
 });

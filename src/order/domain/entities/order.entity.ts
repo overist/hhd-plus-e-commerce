@@ -95,7 +95,8 @@ export class Order {
   /**
    * ANCHOR 쿠폰 적용
    */
-  applyCoupon(couponId: number, discountAmount: number): void {
+  applyCoupon(couponId: number, discountRate: number): void {
+    const discountAmount = Math.floor((this.totalAmount * discountRate) / 100);
     if (discountAmount < 0) {
       throw new DomainException(ErrorCode.INVALID_AMOUNT);
     }

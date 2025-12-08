@@ -430,14 +430,14 @@ describe('Order Entity', () => {
         new Date(),
       );
       const couponId = 5;
-      const discountAmount = 3000;
+      const discountRate = 10;
 
       // when
-      order.applyCoupon(couponId, discountAmount);
+      order.applyCoupon(couponId, discountRate);
 
       // then
       expect(order.couponId).toBe(couponId);
-      expect(order.discountAmount).toBe(discountAmount);
+      expect(order.discountAmount).toBe(3000); // 30000 * 10%
       expect(order.finalAmount).toBe(27000); // 30000 - 3000
     });
 
