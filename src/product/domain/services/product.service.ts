@@ -10,10 +10,14 @@ import { ProductSalesRanking } from '../entities/product-sales.vo';
 import { ErrorCode, DomainException } from '@common/exception';
 import { OrderItemData } from '@/order/domain/entities/order.types';
 import { OrderItem } from '@/order/domain/entities/order-item.entity';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 
 /**
  * ProductDomainService
  * 상품 관련 영속성 계층과 상호작용하며 핵심 비즈니스 로직을 담당한다.
+ *
+ * 동시성 제어: DB 트랜잭션 + 비관적 잠금 (FOR UPDATE)
+ * - ProductOptionRepository.findById()가 트랜잭션 컨텍스트에서 FOR UPDATE 사용
  */
 @Injectable()
 export class ProductDomainService {
@@ -21,6 +25,7 @@ export class ProductDomainService {
     private readonly productRepository: IProductRepository,
     private readonly productOptionRepository: IProductOptionRepository,
     private readonly productSalesRankingRepository: IProductSalesRankingRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -106,88 +111,103 @@ export class ProductDomainService {
   /**
    * ANCHOR 상품 재고 관리자 업데이트
    * 상품 재고 수량을 증가시키거나 선점중인 재고수량 까지 차감시킬 수 있다.
+   * 동시성 제어: 트랜잭션 + 비관적 잠금 (FOR UPDATE)
    */
   async updateProductOptionStock(
     productOptionId: number,
     operation: 'increase' | 'decrease',
     quantity: number,
   ): Promise<void> {
-    const option = await this.productOptionRepository.findById(productOptionId);
-    if (!option) {
-      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
-    }
-
-    if (operation === 'decrease') {
-      if (option.stock < quantity) {
-        throw new DomainException(ErrorCode.INSUFFICIENT_STOCK);
+    await this.prisma.runInTransaction(async () => {
+      const option =
+        await this.productOptionRepository.findById(productOptionId);
+      if (!option) {
+        throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
       }
-      option.adjustStock(option.stock - quantity);
-    } else if (operation === 'increase') {
-      option.adjustStock(option.stock + quantity);
-    } else {
-      throw new DomainException(ErrorCode.INVALID_ARGUMENT);
-    }
 
-    await this.productOptionRepository.update(option); // save
+      if (operation === 'decrease') {
+        if (option.stock < quantity) {
+          throw new DomainException(ErrorCode.INSUFFICIENT_STOCK);
+        }
+        option.adjustStock(option.stock - quantity);
+      } else if (operation === 'increase') {
+        option.adjustStock(option.stock + quantity);
+      } else {
+        throw new DomainException(ErrorCode.INVALID_ARGUMENT);
+      }
+
+      await this.productOptionRepository.update(option);
+    });
   }
 
   /**
    * ANCHOR 주문용 상품 정보 조회 및 재고 선점
+   * 동시성 제어: 트랜잭션 + 비관적 잠금 (FOR UPDATE)
    */
   async reserveProductsForOrder(
     items: Array<{ productOptionId: number; quantity: number }>,
   ): Promise<OrderItemData[]> {
-    const orderItemsData: OrderItemData[] = [];
+    return this.prisma.runInTransaction(async () => {
+      const orderItemsData: OrderItemData[] = [];
 
-    for (const item of items) {
-      const productOption = await this.getProductOption(item.productOptionId);
-      const product = await this.getProduct(productOption.productId);
+      for (const item of items) {
+        const productOption = await this.getProductOption(item.productOptionId);
+        const product = await this.getProduct(productOption.productId);
 
-      productOption.reserveStock(item.quantity);
-      await this.productOptionRepository.update(productOption);
+        productOption.reserveStock(item.quantity);
+        await this.productOptionRepository.update(productOption);
 
-      orderItemsData.push({
-        productName: product.name,
-        price: product.price,
-        productOptionId: productOption.id,
-        quantity: item.quantity,
-      });
-    }
+        orderItemsData.push({
+          productName: product.name,
+          price: product.price,
+          productOptionId: productOption.id,
+          quantity: item.quantity,
+        });
+      }
 
-    return orderItemsData;
+      return orderItemsData;
+    });
   }
 
   /**
    * ANCHOR 결제 완료 시 재고 확정 차감
+   * 동시성 제어: 트랜잭션 + 비관적 잠금 (FOR UPDATE)
    */
   async confirmPaymentStock(
     productOptionId: number,
     quantity: number,
   ): Promise<void> {
-    const option = await this.productOptionRepository.findById(productOptionId);
-    if (!option) {
-      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
-    }
+    await this.prisma.runInTransaction(async () => {
+      const option =
+        await this.productOptionRepository.findById(productOptionId);
+      if (!option) {
+        throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+      }
 
-    option.decreaseStock(quantity);
-    await this.productOptionRepository.update(option);
+      option.decreaseStock(quantity);
+      await this.productOptionRepository.update(option);
+    });
   }
 
   /**
    * ANCHOR 결제 실패 시 재고 복원 (보상 트랜잭션)
    * 확정 차감된 재고를 다시 선점 상태로 되돌림
+   * 동시성 제어: 트랜잭션 + 비관적 잠금 (FOR UPDATE)
    */
   async restoreStockAfterPaymentFailure(
     productOptionId: number,
     quantity: number,
   ): Promise<void> {
-    const option = await this.productOptionRepository.findById(productOptionId);
-    if (!option) {
-      throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
-    }
+    await this.prisma.runInTransaction(async () => {
+      const option =
+        await this.productOptionRepository.findById(productOptionId);
+      if (!option) {
+        throw new DomainException(ErrorCode.PRODUCT_OPTION_NOT_FOUND);
+      }
 
-    option.restoreStock(quantity);
-    await this.productOptionRepository.update(option);
+      option.restoreStock(quantity);
+      await this.productOptionRepository.update(option);
+    });
   }
 
   /**

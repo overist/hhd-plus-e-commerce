@@ -77,6 +77,7 @@ describe('동시성 제어 통합 테스트', () => {
       productRepository,
       productOptionRepository,
       productSalesRankingRepository as any,
+      prismaService,
     );
     const userService = new UserDomainService(
       userRepository,

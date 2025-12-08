@@ -9,12 +9,14 @@ import {
   IProductSalesRankingRepository,
 } from '@/product/domain/interfaces/product.repository.interface';
 import { ErrorCode, DomainException } from '@common/exception';
+import { PrismaService } from '@common/prisma-manager/prisma.service';
 
 describe('ProductDomainService', () => {
   let productDomainService: ProductDomainService;
   let mockProductRepository: jest.Mocked<IProductRepository>;
   let mockProductOptionRepository: jest.Mocked<IProductOptionRepository>;
   let mockProductSalesRankingRepository: jest.Mocked<IProductSalesRankingRepository>;
+  let mockPrismaService: jest.Mocked<PrismaService>;
 
   beforeEach(() => {
     // Mock Repository 생성
@@ -39,10 +41,16 @@ describe('ProductDomainService', () => {
       findRankByDate: jest.fn(),
     } as any;
 
+    // Mock PrismaService - runInTransaction이 콜백을 실행하도록 설정
+    mockPrismaService = {
+      runInTransaction: jest.fn((callback) => callback()),
+    } as any;
+
     productDomainService = new ProductDomainService(
       mockProductRepository,
       mockProductOptionRepository,
       mockProductSalesRankingRepository,
+      mockPrismaService,
     );
   });
 
