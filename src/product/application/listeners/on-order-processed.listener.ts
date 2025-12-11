@@ -1,5 +1,5 @@
+import { OrderProcessedEvent } from '@/order/application/events/order-processed.event';
 import { ProductDomainService } from '@/product/domain/services/product.service';
-import { UserBalanceDeductByOrderEvent } from '@/user/application/events/user-balance-deduct-by-order.event';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
@@ -16,8 +16,8 @@ export class OnOrderProcessedListener {
     'product:' + OnOrderProcessedListener.name,
   );
 
-  @OnEvent(UserBalanceDeductByOrderEvent.EVENT_NAME)
-  async handle(event: UserBalanceDeductByOrderEvent): Promise<void> {
+  @OnEvent(OrderProcessedEvent.EVENT_NAME)
+  async handle(event: OrderProcessedEvent): Promise<void> {
     try {
       // 판매 랭킹 업데이트 (Redis) fire and forget
       this.productService.recordSales(event.orderItems);
