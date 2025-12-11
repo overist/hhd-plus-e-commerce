@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 // GLOBAL MODULES
 import { GlobalPrismaModule } from './@common/prisma-manager/prisma.module';
@@ -21,6 +22,7 @@ import { SchedulerModule } from './@schedulers/scheduler.module';
 @Module({
   imports: [
     // GLOBAL
+    EventEmitterModule.forRoot(),
     GlobalPrismaModule,
     GlobalRedisModule,
     GlobalRedisLockModule,

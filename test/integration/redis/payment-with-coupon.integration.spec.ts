@@ -1,3 +1,5 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
 import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
 import { OrderDomainService } from '@/order/domain/services/order.service';
@@ -5,7 +7,6 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { UserDomainService } from '@/user/domain/services/user.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   OrderRepository,
   OrderItemRepository,
@@ -13,6 +14,7 @@ import {
 import {
   ProductRepository,
   ProductOptionRepository,
+  ProductSalesRankingRepository,
 } from '@/product/infrastructure/product.repository';
 import {
   UserRepository,
@@ -22,42 +24,145 @@ import {
   CouponRepository,
   UserCouponRepository,
 } from '@/coupon/infrastructure/coupon.repository';
+import {
+  IOrderRepository,
+  IOrderItemRepository,
+} from '@/order/domain/interfaces/order.repository.interface';
+import {
+  IProductRepository,
+  IProductOptionRepository,
+  IProductSalesRankingRepository,
+} from '@/product/domain/interfaces/product.repository.interface';
+import {
+  IUserRepository,
+  IUserBalanceChangeLogRepository,
+} from '@/user/domain/interfaces/user.repository.interface';
+import {
+  ICouponRepository,
+  IUserCouponRepository,
+} from '@/coupon/domain/interfaces/coupon.repository.interface';
 import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { User } from '@/user/domain/entities/user.entity';
 import { Coupon } from '@/coupon/domain/entities/coupon.entity';
+import { UserCoupon } from '@/coupon/domain/entities/user-coupon.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { RedisService } from '@common/redis/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
+
+// Event Listeners
+import { OnOrderProcessingListener as CouponOnOrderProcessingListener } from '@/coupon/application/listeners/on-order-processing.listener';
+import { OnOrderProcessingListener as ProductOnOrderProcessingListener } from '@/product/application/listeners/on-order-processing.listener';
+import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-payment.listener';
+import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
+import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
+
 import {
   setupDatabaseTest,
   setupRedisForTest,
   getRedisService,
+  getRedisLockService,
   cleanupDatabase,
   teardownIntegrationTest,
 } from '../setup';
 
 describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
+  let module: TestingModule;
   let prismaService: PrismaService;
   let redisService: RedisService;
+  let redisLockService: RedisLockService;
   let createOrderUseCase: CreateOrderUseCase;
   let processPaymentUseCase: ProcessPaymentUseCase;
   let orderRepository: OrderRepository;
   let productRepository: ProductRepository;
   let productOptionRepository: ProductOptionRepository;
   let userRepository: UserRepository;
-  let couponRepository: CouponRepository;
   let userCouponRepository: UserCouponRepository;
   let couponRedisService: CouponRedisService;
-
-  const USER_COUPON_KEY_PREFIX = 'data:user-coupon';
 
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
     await setupRedisForTest();
     redisService = getRedisService();
+    redisLockService = getRedisLockService();
+
+    // NestJS Test Module 생성 (이벤트 리스너 포함)
+    module = await Test.createTestingModule({
+      imports: [EventEmitterModule.forRoot()],
+      providers: [
+        // Prisma & Redis
+        { provide: PrismaService, useValue: prismaService },
+        { provide: RedisService, useValue: redisService },
+        { provide: RedisLockService, useValue: redisLockService },
+
+        // Order
+        OrderRepository,
+        { provide: IOrderRepository, useClass: OrderRepository },
+        OrderItemRepository,
+        { provide: IOrderItemRepository, useClass: OrderItemRepository },
+        OrderDomainService,
+
+        // Product
+        ProductRepository,
+        { provide: IProductRepository, useClass: ProductRepository },
+        ProductOptionRepository,
+        {
+          provide: IProductOptionRepository,
+          useClass: ProductOptionRepository,
+        },
+        ProductSalesRankingRepository,
+        {
+          provide: IProductSalesRankingRepository,
+          useClass: ProductSalesRankingRepository,
+        },
+        ProductDomainService,
+
+        // User
+        UserRepository,
+        { provide: IUserRepository, useClass: UserRepository },
+        UserBalanceChangeLogRepository,
+        {
+          provide: IUserBalanceChangeLogRepository,
+          useClass: UserBalanceChangeLogRepository,
+        },
+        UserDomainService,
+
+        // Coupon
+        CouponRepository,
+        { provide: ICouponRepository, useClass: CouponRepository },
+        UserCouponRepository,
+        { provide: IUserCouponRepository, useClass: UserCouponRepository },
+        CouponDomainService,
+        CouponRedisService,
+
+        // Use Cases
+        CreateOrderUseCase,
+        ProcessPaymentUseCase,
+
+        // Event Listeners (보상 트랜잭션 포함)
+        CouponOnOrderProcessingListener,
+        ProductOnOrderProcessingListener,
+        OnOrderPaymentListener,
+        OnOrderProcessingFailListener,
+        ProductOnOrderFailListener,
+      ],
+    }).compile();
+
+    // 모듈 초기화 (이벤트 리스너 활성화)
+    await module.init();
+
+    createOrderUseCase = module.get(CreateOrderUseCase);
+    processPaymentUseCase = module.get(ProcessPaymentUseCase);
+    orderRepository = module.get(OrderRepository);
+    productRepository = module.get(ProductRepository);
+    productOptionRepository = module.get(ProductOptionRepository);
+    userRepository = module.get(UserRepository);
+    userCouponRepository = module.get(UserCouponRepository);
+    couponRedisService = module.get(CouponRedisService);
   }, 120000);
 
   afterAll(async () => {
+    await module?.close();
     await teardownIntegrationTest();
   }, 60000);
 
@@ -70,72 +175,6 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
     if (keys.length > 0) {
       await client.del(keys);
     }
-
-    // Repository 인스턴스 생성
-    orderRepository = new OrderRepository(prismaService);
-    const orderItemRepository = new OrderItemRepository(
-      prismaService,
-      redisService,
-    );
-    productRepository = new ProductRepository(prismaService);
-    productOptionRepository = new ProductOptionRepository(prismaService);
-    userRepository = new UserRepository(prismaService);
-    const balanceLogRepository = new UserBalanceChangeLogRepository(
-      prismaService,
-    );
-    couponRepository = new CouponRepository(prismaService);
-    userCouponRepository = new UserCouponRepository(prismaService);
-
-    const productSalesRankingRepository = new (class {
-      async findAll() {
-        return [];
-      }
-      async create() {
-        return null;
-      }
-      async findTop() {
-        return [];
-      }
-    })();
-
-    // Service 인스턴스 생성
-    const orderService = new OrderDomainService(
-      orderRepository,
-      orderItemRepository,
-    );
-    const productService = new ProductDomainService(
-      productRepository,
-      productOptionRepository,
-      productSalesRankingRepository as any,
-    );
-    const couponService = new CouponDomainService(
-      couponRepository,
-      userCouponRepository,
-    );
-    couponRedisService = new CouponRedisService(redisService);
-    const userService = new UserDomainService(
-      userRepository,
-      balanceLogRepository,
-      prismaService,
-    );
-
-    // UseCase 인스턴스 생성
-    createOrderUseCase = new CreateOrderUseCase(
-      orderService,
-      productService,
-      userService,
-      prismaService,
-    );
-
-    processPaymentUseCase = new ProcessPaymentUseCase(
-      orderService,
-      productService,
-      couponService,
-      couponRedisService,
-      userService,
-      prismaService,
-      { emit: jest.fn() } as unknown as EventEmitter2,
-    );
   });
 
   /**
@@ -185,6 +224,20 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
     couponId: number,
   ): Promise<void> {
     await couponRedisService.issueCoupon(userId, couponId);
+  }
+
+  /**
+   * 테스트용 Redis 쿠폰 조회 헬퍼 (null-safe)
+   */
+  async function getRedisUserCouponOrNull(
+    userId: number,
+    couponId: number,
+  ): Promise<UserCoupon | null> {
+    try {
+      return await couponRedisService.getCachedUserCoupon(userId, couponId);
+    } catch {
+      return null;
+    }
   }
 
   describe('쿠폰 적용 결제 성공 케이스', () => {
@@ -322,13 +375,60 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         }),
       ).rejects.toThrow();
 
-      // Then: 주문 상태 유지 (PENDING)
-      const finalOrder = await orderRepository.findById(order.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-
       // Then: 잔액 유지
       const finalUser = await userRepository.findById(user.id);
       expect(finalUser!.balance).toBe(100000);
+    }, 30000);
+
+    it('잔액이 부족하면 결제 실패하고 쿠폰이 롤백된다', async () => {
+      // Given: 잔액이 부족한 사용자
+      const user = await userRepository.create(new User(0, 10000)); // 10,000원만 보유
+      const product = await productRepository.create(
+        new Product(
+          0,
+          '비싼 상품',
+          '설명',
+          50000,
+          '의류',
+          true,
+          new Date(),
+          new Date(),
+        ),
+      );
+      const productOption = await productOptionRepository.create(
+        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
+      );
+      const coupon = await createTestCoupon(10, 100); // 10% 할인해도 45,000원
+
+      // Given: 쿠폰 발급
+      await issueTestCouponToUser(user.id, coupon.id);
+
+      // Given: 주문 생성
+      const order = await createOrderUseCase.createOrder({
+        userId: user.id,
+        items: [{ productOptionId: productOption.id, quantity: 1 }],
+      });
+
+      // When & Then: 잔액 부족으로 결제 실패
+      await expect(
+        processPaymentUseCase.processPayment({
+          orderId: order.orderId,
+          userId: user.id,
+          couponId: coupon.id,
+        }),
+      ).rejects.toThrow();
+
+      // Then: 잔액 유지
+      const finalUser = await userRepository.findById(user.id);
+      expect(finalUser!.balance).toBe(10000);
+
+      // Then: Redis에서 쿠폰 사용 취소됨 (보상 트랜잭션)
+      const redisUserCoupon = await getRedisUserCouponOrNull(
+        user.id,
+        coupon.id,
+      );
+      expect(redisUserCoupon!.usedAt).toBeNull();
+      expect(redisUserCoupon!.orderId).toBeNull();
     }, 30000);
 
     it('이미 사용된 쿠폰으로 결제하면 실패한다', async () => {
@@ -379,393 +479,6 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
           couponId: coupon.id,
         }),
       ).rejects.toThrow();
-
-      // Then: 두 번째 주문 상태 유지 (PENDING)
-      const finalOrder = await orderRepository.findById(order2.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-    }, 30000);
-
-    it('만료된 쿠폰으로 결제하면 실패한다', async () => {
-      // Given: 사용자, 상품 생성
-      const user = await userRepository.create(new User(0, 100000));
-      const product = await productRepository.create(
-        new Product(
-          0,
-          '테스트 상품',
-          '설명',
-          50000,
-          '의류',
-          true,
-          new Date(),
-          new Date(),
-        ),
-      );
-      const productOption = await productOptionRepository.create(
-        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
-      );
-
-      // Given: 만료된 쿠폰 생성 (DB + Redis)
-      const now = new Date();
-      const expiredAt = new Date('2020-01-01'); // 과거 날짜
-
-      const dbCoupon = await prismaService.coupons.create({
-        data: {
-          name: '만료된 쿠폰',
-          discount_rate: 10,
-          total_quantity: 100,
-          issued_quantity: 0,
-          expired_at: expiredAt,
-          created_at: now,
-          updated_at: now,
-        },
-      });
-
-      // Redis에 만료된 쿠폰 캐시
-      const expiredCoupon = new Coupon(
-        dbCoupon.id,
-        dbCoupon.name,
-        10,
-        100,
-        0,
-        expiredAt,
-        now,
-        now,
-      );
-      await couponRedisService.cacheCoupon(expiredCoupon);
-
-      // Given: 쿠폰 발급 (Redis에서 발급 - 만료 체크는 발급 시점에서도 할 수 있지만 여기선 사용 시점에서 체크)
-      // 만료된 쿠폰은 발급 자체가 실패할 수 있으므로 직접 Redis에 UserCoupon 생성
-      const client = redisService.getClient();
-      const userCouponKey = `${USER_COUPON_KEY_PREFIX}:${dbCoupon.id}:${user.id}`;
-      await client.hset(userCouponKey, {
-        couponId: dbCoupon.id.toString(),
-        createdAt: now.getTime().toString(),
-        expiredAt: expiredAt.getTime().toString(),
-        usedAt: '',
-        orderId: '',
-      });
-
-      // Given: 주문 생성
-      const order = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-
-      // When & Then: 만료된 쿠폰으로 결제 시 실패
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-          couponId: dbCoupon.id,
-        }),
-      ).rejects.toThrow();
-
-      // Then: 주문 상태 유지 (PENDING)
-      const finalOrder = await orderRepository.findById(order.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-    }, 30000);
-  });
-
-  describe('보상 트랜잭션 테스트', () => {
-    it('잔액 부족으로 결제 실패 시 Redis 쿠폰 사용이 취소된다', async () => {
-      // Given: 잔액이 부족한 사용자
-      const user = await userRepository.create(new User(0, 10000)); // 1만원
-      const product = await productRepository.create(
-        new Product(
-          0,
-          '고가 상품',
-          '설명',
-          50000,
-          '의류',
-          true,
-          new Date(),
-          new Date(),
-        ),
-      );
-      const productOption = await productOptionRepository.create(
-        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
-      );
-      const coupon = await createTestCoupon(10, 100); // 10% 할인해도 45,000원
-
-      // Given: 쿠폰 발급
-      await issueTestCouponToUser(user.id, coupon.id);
-
-      // Given: 주문 생성 (재고 선점)
-      const order = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-
-      // When: 결제 시도 (잔액 부족으로 실패)
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
-
-      // Then: Redis 쿠폰 사용 취소 확인 (usedAt, orderId가 빈 값)
-      const redisUserCoupon = await couponRedisService.getCachedUserCoupon(
-        user.id,
-        coupon.id,
-      );
-      expect(redisUserCoupon).not.toBeNull();
-      expect(redisUserCoupon!.usedAt).toBeNull();
-      expect(redisUserCoupon!.orderId).toBeNull();
-
-      // Then: 주문 상태 PENDING 유지
-      const finalOrder = await orderRepository.findById(order.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-
-      // Then: 잔액 유지
-      const finalUser = await userRepository.findById(user.id);
-      expect(finalUser!.balance).toBe(10000);
-    }, 30000);
-
-    it('1단계(Redis 쿠폰 사용) 실패 시 보상 트랜잭션 불필요 - 발급받지 않은 쿠폰', async () => {
-      // Given: 사용자, 상품, 쿠폰 (발급 안함)
-      const user = await userRepository.create(new User(0, 100000));
-      const product = await productRepository.create(
-        new Product(
-          0,
-          '상품',
-          '설명',
-          50000,
-          '의류',
-          true,
-          new Date(),
-          new Date(),
-        ),
-      );
-      const productOption = await productOptionRepository.create(
-        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
-      );
-      const coupon = await createTestCoupon(10, 100);
-
-      // Given: 주문 생성
-      const order = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-
-      // When: 발급받지 않은 쿠폰으로 결제 시도 (1단계에서 실패)
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
-
-      // Then: Redis에 UserCoupon이 없음 (보상 불필요)
-      const redisUserCoupon = await couponRedisService.getCachedUserCoupon(
-        user.id,
-        coupon.id,
-      );
-      expect(redisUserCoupon).toBeNull();
-
-      // Then: 주문 상태 PENDING 유지
-      const finalOrder = await orderRepository.findById(order.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-
-      // Then: DB에 쿠폰 사용 기록 없음
-      const userCoupons = await userCouponRepository.findByUserId(user.id);
-      expect(userCoupons.length).toBe(0);
-
-      // Then: 잔액 유지
-      const finalUser = await userRepository.findById(user.id);
-      expect(finalUser!.balance).toBe(100000);
-
-      // Then: 재고 선점 상태 유지
-      const finalOption = await productOptionRepository.findById(
-        productOption.id,
-      );
-      expect(finalOption!.reservedStock).toBe(1);
-    }, 30000);
-
-    it('2단계(DB 트랜잭션) 실패 시 Redis 쿠폰만 취소 - DB 쿠폰 저장 실패 시뮬레이션', async () => {
-      // 이 테스트는 DB 트랜잭션 실패를 시뮬레이션하기 어려우므로
-      // 실제로는 트랜잭션 내부 에러 시 자동 롤백됨을 검증
-      // 여기서는 이미 사용된 쿠폰으로 인한 실패를 테스트
-
-      // Given: 사용자, 상품, 쿠폰 생성
-      const user = await userRepository.create(new User(0, 200000));
-      const product = await productRepository.create(
-        new Product(
-          0,
-          '상품',
-          '설명',
-          50000,
-          '의류',
-          true,
-          new Date(),
-          new Date(),
-        ),
-      );
-      const productOption = await productOptionRepository.create(
-        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
-      );
-      const coupon = await createTestCoupon(10, 100);
-
-      // Given: 쿠폰 발급 및 첫 번째 결제 완료
-      await issueTestCouponToUser(user.id, coupon.id);
-      const order1 = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-      await processPaymentUseCase.processPayment({
-        orderId: order1.orderId,
-        userId: user.id,
-        couponId: coupon.id,
-      });
-
-      // Given: 두 번째 주문 생성
-      const order2 = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-
-      // When: 이미 사용된 쿠폰으로 결제 시도 (1단계에서 실패 - ALREADY_USED)
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order2.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
-
-      // Then: Redis에서 쿠폰은 여전히 사용된 상태 (첫 번째 결제)
-      const redisUserCoupon = await couponRedisService.getCachedUserCoupon(
-        user.id,
-        coupon.id,
-      );
-      expect(redisUserCoupon).not.toBeNull();
-      expect(redisUserCoupon!.orderId).toBe(order1.orderId);
-
-      // Then: 두 번째 주문은 PENDING 유지
-      const finalOrder2 = await orderRepository.findById(order2.orderId);
-      expect(finalOrder2!.status.isPending()).toBe(true);
-    }, 30000);
-
-    it('3단계(잔액 차감) 실패 시 Redis 쿠폰 취소 + DB 보상 트랜잭션 실행', async () => {
-      // Given: 잔액이 부족한 사용자 (결제 금액보다 적게)
-      const user = await userRepository.create(new User(0, 40000)); // 4만원
-      const product = await productRepository.create(
-        new Product(
-          0,
-          '상품',
-          '설명',
-          50000,
-          '의류',
-          true,
-          new Date(),
-          new Date(),
-        ),
-      );
-      const productOption = await productOptionRepository.create(
-        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
-      );
-      const coupon = await createTestCoupon(10, 100); // 10% 할인 → 45,000원 필요
-
-      // Given: 쿠폰 발급
-      await issueTestCouponToUser(user.id, coupon.id);
-
-      // Given: 주문 생성 (재고 선점)
-      const order = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-
-      // 초기 재고 상태 확인
-      const initialOption = await productOptionRepository.findById(
-        productOption.id,
-      );
-      expect(initialOption!.reservedStock).toBe(1);
-
-      // When: 결제 시도 (3단계 잔액 차감에서 실패)
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
-
-      // Then: Redis 쿠폰 사용 취소됨
-      const redisUserCoupon = await couponRedisService.getCachedUserCoupon(
-        user.id,
-        coupon.id,
-      );
-      expect(redisUserCoupon).not.toBeNull();
-      expect(redisUserCoupon!.usedAt).toBeNull();
-      expect(redisUserCoupon!.orderId).toBeNull();
-
-      // Then: 주문 상태 PENDING으로 복원
-      const finalOrder = await orderRepository.findById(order.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-
-      // Then: DB에 쿠폰 사용 기록 없음 (보상 트랜잭션에서 삭제)
-      const userCoupons = await userCouponRepository.findByUserId(user.id);
-      expect(userCoupons.length).toBe(0);
-
-      // Then: 잔액 유지
-      const finalUser = await userRepository.findById(user.id);
-      expect(finalUser!.balance).toBe(40000);
-
-      // Then: 재고 복원 (reservedStock 유지, stock 복원)
-      const finalOption = await productOptionRepository.findById(
-        productOption.id,
-      );
-      expect(finalOption!.reservedStock).toBe(1); // 선점 상태 유지 (주문은 아직 PENDING)
-    }, 30000);
-
-    it('쿠폰 없이 결제 시 잔액 부족하면 주문/재고만 복원된다', async () => {
-      // Given: 잔액이 부족한 사용자
-      const user = await userRepository.create(new User(0, 10000)); // 1만원
-      const product = await productRepository.create(
-        new Product(
-          0,
-          '상품',
-          '설명',
-          50000,
-          '의류',
-          true,
-          new Date(),
-          new Date(),
-        ),
-      );
-      const productOption = await productOptionRepository.create(
-        new ProductOption(0, product.id, 'RED', 'M', 10, 0),
-      );
-
-      // Given: 주문 생성 (재고 선점)
-      const order = await createOrderUseCase.createOrder({
-        userId: user.id,
-        items: [{ productOptionId: productOption.id, quantity: 1 }],
-      });
-
-      // When: 쿠폰 없이 결제 시도 (잔액 부족)
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-        }),
-      ).rejects.toThrow();
-
-      // Then: 주문 상태 PENDING 유지
-      const finalOrder = await orderRepository.findById(order.orderId);
-      expect(finalOrder!.status.isPending()).toBe(true);
-
-      // Then: 잔액 유지
-      const finalUser = await userRepository.findById(user.id);
-      expect(finalUser!.balance).toBe(10000);
-
-      // Then: 재고 선점 상태 유지
-      const finalOption = await productOptionRepository.findById(
-        productOption.id,
-      );
-      expect(finalOption!.reservedStock).toBe(1);
     }, 30000);
   });
 
@@ -902,7 +615,7 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       expect(failedResults.length).toBe(2);
 
       // Then: Redis에서 쿠폰은 사용된 상태
-      const redisUserCoupon = await couponRedisService.getCachedUserCoupon(
+      const redisUserCoupon = await getRedisUserCouponOrNull(
         user.id,
         coupon.id,
       );

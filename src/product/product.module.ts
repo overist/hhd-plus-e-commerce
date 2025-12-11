@@ -18,6 +18,12 @@ import { GetProductDetailUseCase } from '@/product/application/get-product-detai
 import { GetTopProductsUseCase } from '@/product/application/get-top-products.use-case';
 import { UpdateStockUseCase } from '@/product/application/update-stock.use-case';
 
+// Event Listeners
+
+import { OnOrderProcessingListener } from './application/listeners/on-order-processing.listener';
+import { OnOrderProcessedListener } from './application/listeners/on-order-processed.listener';
+import { OnOrderFailListener } from './application/listeners/on-order-fail.listener';
+
 /**
  * Product Module
  * 상품 관련 기능 모듈
@@ -51,6 +57,11 @@ import { UpdateStockUseCase } from '@/product/application/update-stock.use-case'
     GetProductDetailUseCase,
     GetTopProductsUseCase,
     UpdateStockUseCase,
+
+    // Event Listeners
+    OnOrderProcessingListener,
+    OnOrderProcessedListener,
+    OnOrderFailListener, // 보상 트랜잭션 리스너
   ],
   exports: [
     ProductDomainService,

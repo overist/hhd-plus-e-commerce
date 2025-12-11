@@ -1,3 +1,5 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
 import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
 import { OrderDomainService } from '@/order/domain/services/order.service';
@@ -5,7 +7,6 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
 import { CouponDomainService } from '@/coupon/domain/services/coupon.service';
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { UserDomainService } from '@/user/domain/services/user.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   OrderRepository,
   OrderItemRepository,
@@ -13,6 +14,7 @@ import {
 import {
   ProductRepository,
   ProductOptionRepository,
+  ProductSalesRankingRepository,
 } from '@/product/infrastructure/product.repository';
 import {
   UserRepository,
@@ -22,22 +24,52 @@ import {
   CouponRepository,
   UserCouponRepository,
 } from '@/coupon/infrastructure/coupon.repository';
+import {
+  IOrderRepository,
+  IOrderItemRepository,
+} from '@/order/domain/interfaces/order.repository.interface';
+import {
+  IProductRepository,
+  IProductOptionRepository,
+  IProductSalesRankingRepository,
+} from '@/product/domain/interfaces/product.repository.interface';
+import {
+  IUserRepository,
+  IUserBalanceChangeLogRepository,
+} from '@/user/domain/interfaces/user.repository.interface';
+import {
+  ICouponRepository,
+  IUserCouponRepository,
+} from '@/coupon/domain/interfaces/coupon.repository.interface';
 import { Product } from '@/product/domain/entities/product.entity';
 import { ProductOption } from '@/product/domain/entities/product-option.entity';
 import { User } from '@/user/domain/entities/user.entity';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { RedisService } from '@common/redis/redis.service';
+import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
+
+// Event Listeners
+import { OnOrderProcessingListener as CouponOnOrderProcessingListener } from '@/coupon/application/listeners/on-order-processing.listener';
+import { OnOrderProcessingListener as ProductOnOrderProcessingListener } from '@/product/application/listeners/on-order-processing.listener';
+import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-payment.listener';
+import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
+import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
+import { OnOrderFailListener as OrderOnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
+
 import {
   setupDatabaseTest,
   setupRedisForTest,
   getRedisService,
+  getRedisLockService,
   cleanupDatabase,
   teardownIntegrationTest,
 } from '../setup';
 
 describe('결제 처리 통합 테스트 (US-009)', () => {
+  let module: TestingModule;
   let prismaService: PrismaService;
   let redisService: RedisService;
+  let redisLockService: RedisLockService;
   let createOrderUseCase: CreateOrderUseCase;
   let processPaymentUseCase: ProcessPaymentUseCase;
   let orderRepository: OrderRepository;
@@ -49,76 +81,96 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
     prismaService = await setupDatabaseTest();
     await setupRedisForTest();
     redisService = getRedisService();
-  }, 60000); // 60초 타임아웃
+    redisLockService = getRedisLockService();
+
+    // NestJS Test Module 생성 (이벤트 리스너 포함)
+    module = await Test.createTestingModule({
+      imports: [EventEmitterModule.forRoot()],
+      providers: [
+        // Prisma & Redis
+        { provide: PrismaService, useValue: prismaService },
+        { provide: RedisService, useValue: redisService },
+        { provide: RedisLockService, useValue: redisLockService },
+
+        // Order
+        OrderRepository,
+        { provide: IOrderRepository, useClass: OrderRepository },
+        OrderItemRepository,
+        { provide: IOrderItemRepository, useClass: OrderItemRepository },
+        OrderDomainService,
+
+        // Product
+        ProductRepository,
+        { provide: IProductRepository, useClass: ProductRepository },
+        ProductOptionRepository,
+        {
+          provide: IProductOptionRepository,
+          useClass: ProductOptionRepository,
+        },
+        ProductSalesRankingRepository,
+        {
+          provide: IProductSalesRankingRepository,
+          useClass: ProductSalesRankingRepository,
+        },
+        ProductDomainService,
+
+        // User
+        UserRepository,
+        { provide: IUserRepository, useClass: UserRepository },
+        UserBalanceChangeLogRepository,
+        {
+          provide: IUserBalanceChangeLogRepository,
+          useClass: UserBalanceChangeLogRepository,
+        },
+        UserDomainService,
+
+        // Coupon
+        CouponRepository,
+        { provide: ICouponRepository, useClass: CouponRepository },
+        UserCouponRepository,
+        { provide: IUserCouponRepository, useClass: UserCouponRepository },
+        CouponDomainService,
+        CouponRedisService,
+
+        // Use Cases
+        CreateOrderUseCase,
+        ProcessPaymentUseCase,
+
+        // Event Listeners (보상 트랜잭션 포함)
+        CouponOnOrderProcessingListener,
+        ProductOnOrderProcessingListener,
+        OnOrderPaymentListener,
+        OnOrderProcessingFailListener,
+        ProductOnOrderFailListener,
+        OrderOnOrderFailListener,
+      ],
+    }).compile();
+
+    // 모듈 초기화 (이벤트 리스너 활성화)
+    await module.init();
+
+    createOrderUseCase = module.get(CreateOrderUseCase);
+    processPaymentUseCase = module.get(ProcessPaymentUseCase);
+    orderRepository = module.get(OrderRepository);
+    productRepository = module.get(ProductRepository);
+    productOptionRepository = module.get(ProductOptionRepository);
+    userRepository = module.get(UserRepository);
+  }, 120000);
 
   afterAll(async () => {
+    await module?.close();
     await teardownIntegrationTest();
-  }, 60000); // 60초 타임아웃
+  }, 60000);
 
   beforeEach(async () => {
     await cleanupDatabase(prismaService);
 
-    orderRepository = new OrderRepository(prismaService);
-    const orderItemRepository = new OrderItemRepository(
-      prismaService,
-      redisService,
-    );
-    productRepository = new ProductRepository(prismaService);
-    productOptionRepository = new ProductOptionRepository(prismaService);
-    userRepository = new UserRepository(prismaService);
-    const balanceLogRepository = new UserBalanceChangeLogRepository(
-      prismaService,
-    );
-    const couponRepository = new CouponRepository(prismaService);
-    const userCouponRepository = new UserCouponRepository(prismaService);
-    const productSalesRankingRepository = new (class {
-      async findAll() {
-        return [];
-      }
-      async create() {
-        return null;
-      }
-      async findTop() {
-        return [];
-      }
-    })();
-
-    const orderService = new OrderDomainService(
-      orderRepository,
-      orderItemRepository,
-    );
-    const productService = new ProductDomainService(
-      productRepository,
-      productOptionRepository,
-      productSalesRankingRepository as any,
-    );
-    const couponService = new CouponDomainService(
-      couponRepository,
-      userCouponRepository,
-    );
-    const couponRedisService = new CouponRedisService(redisService);
-    const userService = new UserDomainService(
-      userRepository,
-      balanceLogRepository,
-      prismaService,
-    );
-
-    createOrderUseCase = new CreateOrderUseCase(
-      orderService,
-      productService,
-      userService,
-      prismaService,
-    );
-
-    processPaymentUseCase = new ProcessPaymentUseCase(
-      orderService,
-      productService,
-      couponService,
-      couponRedisService,
-      userService,
-      prismaService,
-      { emit: jest.fn() } as unknown as EventEmitter2,
-    );
+    // Redis 키 정리
+    const client = redisService.getClient();
+    const keys = await client.keys('*');
+    if (keys.length > 0) {
+      await client.del(keys);
+    }
   });
 
   describe('결제 처리 동시성', () => {
