@@ -11,23 +11,8 @@
 ```
 src/
 ├── @auth/                    # 인증 모듈
-│   ├── auth.controller.ts
-│   ├── auth.module.ts
-│   └── dto/
-│
 ├── @common/                  # 공통 모듈
-│   ├── exception/            # 도메인/검증 예외 필터
-│   ├── guards/               # 인증 가드
-│   ├── mutex-manager/        # 분산 락 관리자
-│   ├── redis-manager/        # Redis 연결 관리 (Lock Redis)
-│   ├── cache-manager/        # API 응답 캐시 관리 (Cache Redis)
-│   └── prisma-manager/       # Prisma 트랜잭션 컨텍스트
-│
 ├── @schedulers/              # 배치 스케줄러
-│   ├── order-expiration.scheduler.ts
-│   ├── product-popularity.scheduler.ts
-│   └── scheduler.module.ts
-│
 ├── cart/                     # 장바구니 도메인 모듈
 │   ├── cart.module.ts
 │   ├── application/          # 유즈케이스 계층
