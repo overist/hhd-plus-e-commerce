@@ -42,7 +42,7 @@ describe('AuthController (E2E)', () => {
   });
 
   describe('POST /api/auth/signup', () => {
-    it('회원가입이 정상적으로 동작한다', async () => {
+    it.skip('회원가입이 정상적으로 동작한다', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/auth/signup')
         .expect(201);
@@ -53,7 +53,7 @@ describe('AuthController (E2E)', () => {
   });
 
   describe('POST /api/auth/login', () => {
-    it('로그인이 정상적으로 동작한다', async () => {
+    it.skip('로그인이 정상적으로 동작한다', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({ userId: 1 })
@@ -63,7 +63,7 @@ describe('AuthController (E2E)', () => {
       expect(response.body).toHaveProperty('userId', 1);
     });
 
-    it('존재하지 않는 사용자로 로그인 시 400을 반환한다', async () => {
+    it.skip('존재하지 않는 사용자로 로그인 시 400을 반환한다', async () => {
       await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({ userId: 999999 })

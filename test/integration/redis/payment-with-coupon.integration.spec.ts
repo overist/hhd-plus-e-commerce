@@ -56,6 +56,7 @@ import { OnOrderProcessingListener as ProductOnOrderProcessingListener } from '@
 import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-payment.listener';
 import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
 import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
+import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
 
 import {
   setupDatabaseTest,
@@ -138,6 +139,9 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         // Use Cases
         CreateOrderUseCase,
         ProcessPaymentUseCase,
+
+        // Orchestrators
+        PaymentOrchestrator,
 
         // Event Listeners (보상 트랜잭션 포함)
         CouponOnOrderProcessingListener,

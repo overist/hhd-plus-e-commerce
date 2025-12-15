@@ -55,6 +55,7 @@ import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-pa
 import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
 import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
 import { OnOrderFailListener as OrderOnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
+import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
 
 import {
   setupDatabaseTest,
@@ -135,6 +136,9 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
         // Use Cases
         CreateOrderUseCase,
         ProcessPaymentUseCase,
+
+        // Orchestrators
+        PaymentOrchestrator,
 
         // Event Listeners (보상 트랜잭션 포함)
         CouponOnOrderProcessingListener,
