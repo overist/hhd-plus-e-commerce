@@ -19,6 +19,9 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
 import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
+// Orchestrators
+import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
+
 // Event Listeners
 import { OnOrderProcessedListener } from '@/order/application/listeners/on-order-processed.listener';
 import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
@@ -55,6 +58,9 @@ import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail
     // Event Listeners
     OnOrderProcessedListener,
     OnOrderFailListener,
+
+    // Event Orchestrators
+    PaymentOrchestrator,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],
 })
