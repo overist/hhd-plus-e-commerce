@@ -17,6 +17,9 @@ export class AuthGuard implements CanActivate {
 
     const userIdParam = request.params?.userId || request.body?.userId;
 
+    // 부하테스트를 위한 예외 처리
+    if (process.env.NODE_ENV === 'stage') return true;
+
     if (!session || !session.userId) {
       throw new UnauthorizedException('로그인이 필요합니다');
     }

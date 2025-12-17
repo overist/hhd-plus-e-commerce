@@ -31,6 +31,25 @@ services:
       - '6379:6379'
     command: redis-server --maxmemory 512mb --maxmemory-policy noeviction
 
+  # Redis Seed (쿠폰 등 초기 데이터)
+  hhplus-redis-seed:
+    image: redis:8.4.0
+    restart: 'no'
+    container_name: hhplus-redis-seed
+    depends_on:
+      - hhplus-redis
+    environment:
+      REDIS_HOST: hhplus-redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./infra/initredis/seed-coupons.sh:/seed/seed-coupons.sh:ro
+    entrypoint:
+      [
+        '/bin/sh',
+        '-c',
+        'tr -d "\\r" < /seed/seed-coupons.sh > /tmp/seed.sh && sh /tmp/seed.sh',
+      ]
+
   # Kafka Cluster (1 node for development)
   kafka:
     image: apache/kafka:3.7.0

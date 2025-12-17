@@ -58,6 +58,26 @@ services:
           cpus: '1.0'
           memory: 512M
 
+  # Redis Seed (쿠폰 등 초기 데이터)
+  redis-seed:
+    image: redis:8.4.0
+    container_name: scale-redis-seed
+    restart: 'no'
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./infra/initredis/seed-coupons.sh:/seed/seed-coupons.sh:ro
+    entrypoint:
+      [
+        '/bin/sh',
+        '-c',
+        'tr -d "\\r" < /seed/seed-coupons.sh > /tmp/seed.sh && sh /tmp/seed.sh',
+      ]
+
   # Kafka Cluster (3 nodes)
   kafka-1:
     image: apache/kafka:3.7.0
