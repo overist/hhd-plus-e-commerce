@@ -1,14 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { OrderProcessedEvent } from '../events/order-processed.event';
+import { OrderKafkaProducer } from '../../infrastructure/order.kafka.producer';
 
 /**
  * onOrderProcessed - 주문 결제 완료 시 외부 데이터 플랫폼 전송
  *
  * 수신: order.processed
- * 동작: 주문 데이터를 외부 시스템(데이터 웨어하우스, 분석 플랫폼 등)에 전송
- *
- * TODO: 실제 외부 플랫폼 연동 시 구현
+ * 동작: 주문 데이터를 Kafka 토픽으로 발행, 외부 시스템이 구독하거나 컨슈머가 처리
  */
 @Injectable()
 export class OnOrderProcessedListener {
@@ -16,12 +15,26 @@ export class OnOrderProcessedListener {
     'order:' + OnOrderProcessedListener.name,
   );
 
+  constructor(private readonly orderKafkaProducer: OrderKafkaProducer) {}
+
   @OnEvent(OrderProcessedEvent.EVENT_NAME)
   async handle(event: OrderProcessedEvent): Promise<void> {
     try {
-      // TODO: 외부 데이터 플랫폼으로 주문 데이터 전송
-      // mock implementation
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const message = {
+        orderId: event.orderId,
+        userId: event.userId,
+        finalAmount: event.order.finalAmount,
+        couponId: event.couponId,
+        items: event.orderItems.map((item) => ({
+          productOptionId: item.productOptionId,
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        processedAt: new Date().toISOString(),
+      };
+
+      await this.orderKafkaProducer.publishOrderProcessed(message);
 
       this.logger.log(
         `[onOrderProcessed] 데이터 플랫폼 전송 - orderId: ${event.order.id}, amount: ${event.order.finalAmount}`,
