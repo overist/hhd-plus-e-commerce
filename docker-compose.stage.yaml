@@ -30,9 +30,9 @@ services:
       - --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 300s
+      retries: 100
 
   # Redis (통합: 세션, 캐시, 분산락, NoSQL)
   redis:

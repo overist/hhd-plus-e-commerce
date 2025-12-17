@@ -1,6 +1,6 @@
 -- COUPON DATA
 INSERT INTO coupons (name, discount_rate, total_quantity, issued_quantity, expired_at)
-    VALUES ('TESTCOUPON', 15, 100, 0, '2029-12-31 23:59:59');
+    VALUES ('TESTCOUPON', 15, 10000, 0, '2029-12-31 23:59:59');
 
 -- ============================================
 -- SAMPLE DATA FOR TESTING
@@ -97,12 +97,3 @@ INSERT INTO order_items (order_id, product_option_id, product_name, price, quant
     (9, 12, '삼성 갤럭시 버즈', 179000, 1, 179000),
     -- order 10: 나이키 에어맥스 1개
     (10, 3, '나이키 에어맥스', 159000, 1, 159000);
-
--- SAMPLE PRODUCT POPULARITY SNAPSHOT (인기상품 스냅샷 - 배치로 생성된 것처럼)
--- 최근 3일간 판매량 기준: 에어팟 프로(4개), 나이키 에어맥스(4개), 아디다스(1개), 리바이스(1개), 폴로(1개), 갤럭시 버즈(1개)
-INSERT INTO product_popularity_snapshot (product_id, product_name, price, category, `rank`, sales_count, last_sold_at, created_at) VALUES
-    (5, '애플 에어팟 프로', 329000, 'ELECTRONICS', 1, 4, NOW() - INTERVAL 1 DAY, NOW()),
-    (1, '나이키 에어맥스', 159000, 'SHOES', 2, 4, NOW() - INTERVAL 1 DAY, NOW()),
-    (2, '아디다스 울트라부스트', 189000, 'SHOES', 3, 1, NOW() - INTERVAL 3 DAY, NOW()),
-    (4, '리바이스 501', 99000, 'CLOTHING', 4, 1, NOW() - INTERVAL 1 DAY, NOW()),
-    (6, '삼성 갤럭시 버즈', 179000, 'ELECTRONICS', 5, 1, NOW() - INTERVAL 2 DAY, NOW())

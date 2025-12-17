@@ -11,6 +11,7 @@ import { RedisStore } from 'connect-redis';
 import { ValidationPipe } from '@nestjs/common';
 import { DomainExceptionFilter } from '@common/exception/domain-exception.filter';
 import { ApplicationExceptionFilter } from '@common/exception/application-exception.filter';
+import { RepositoryExceptionFilter } from '@common/exception';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -19,6 +20,7 @@ async function bootstrap() {
   app.useGlobalFilters(
     new DomainExceptionFilter(),
     new ApplicationExceptionFilter(),
+    new RepositoryExceptionFilter(),
   );
 
   // Global Validation Pipe
