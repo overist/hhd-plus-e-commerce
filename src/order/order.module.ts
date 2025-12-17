@@ -28,6 +28,10 @@ import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail
 
 // Infrastructure Services
 import { OrderKafkaProducer } from '@/order/infrastructure/order.kafka.producer';
+
+// Kafka Consumers
+import { ExternalPlatformKafkaConsumer } from '@/order/presentation/consumers/external-platform.kafka.consumer';
+
 /**
  * Order Module
  * 주문 및 결제 관리 모듈
@@ -66,6 +70,10 @@ import { OrderKafkaProducer } from '@/order/infrastructure/order.kafka.producer'
 
     // Infrastructure Services
     OrderKafkaProducer,
+
+    // Kafka Consumer
+    // TODO API 서버는 애플리케이션 계층만, 컨슈머 서버는 컨슈머 계층만 써야함
+    ExternalPlatformKafkaConsumer,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],
 })
