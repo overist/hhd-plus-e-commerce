@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
 import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
 import { OrderDomainService } from '@/order/domain/services/order.service';
@@ -56,7 +57,10 @@ import { OnOrderProcessingListener as ProductOnOrderProcessingListener } from '@
 import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-payment.listener';
 import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
 import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
-import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
+import { OnOrderFailListener as OrderOnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
+import { OnOrderProcessingListener as OrderOnOrderProcessingListener } from '@/order/application/listeners/on-order-processing.listener';
+import { OnOrderProcessingSuccessListener } from '@/order/application/listeners/on-order-processing-success.listener';
+import { OnOrderPaymentSuccessListener } from '@/order/application/listeners/on-order-payment-success.listener';
 
 import {
   setupDatabaseTest,
@@ -67,8 +71,14 @@ import {
   teardownIntegrationTest,
 } from '../setup';
 
+import { awaitEvent } from '../helpers/await-event';
+import { OrderProcessedEvent } from '@/order/application/events/order-processed.event';
+import { OrderProcessingFailDoneEvent } from '@/order/application/events/order-processing-fail-done.event';
+import { OrderPaymentFailDoneEvent } from '@/order/application/events/order-payment-fail-done.event';
+
 describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
   let module: TestingModule;
+  let eventEmitter: EventEmitter2;
   let prismaService: PrismaService;
   let redisService: RedisService;
   let redisLockService: RedisLockService;
@@ -140,20 +150,23 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         CreateOrderUseCase,
         ProcessPaymentUseCase,
 
-        // Orchestrators
-        PaymentOrchestrator,
-
         // Event Listeners (보상 트랜잭션 포함)
         CouponOnOrderProcessingListener,
         ProductOnOrderProcessingListener,
+        OrderOnOrderProcessingListener,
         OnOrderPaymentListener,
+        OnOrderProcessingSuccessListener,
+        OnOrderPaymentSuccessListener,
         OnOrderProcessingFailListener,
         ProductOnOrderFailListener,
+        OrderOnOrderFailListener,
       ],
     }).compile();
 
     // 모듈 초기화 (이벤트 리스너 활성화)
     await module.init();
+
+    eventEmitter = module.get(EventEmitter2);
 
     createOrderUseCase = module.get(CreateOrderUseCase);
     processPaymentUseCase = module.get(ProcessPaymentUseCase);
@@ -274,16 +287,28 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
+      const processed = awaitEvent<OrderProcessedEvent>(
+        eventEmitter,
+        OrderProcessedEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) => payload.orderId === order.orderId,
+        },
+      );
+
       // When: 쿠폰을 사용하여 결제
-      const result = await processPaymentUseCase.processPayment({
+      await processPaymentUseCase.processPayment({
         orderId: order.orderId,
         userId: user.id,
         couponId: coupon.id,
       });
 
+      await processed;
+
       // Then: 할인이 적용된 금액으로 결제됨 (50,000 * 10% = 5,000 할인)
-      expect(result.paidAmount).toBe(45000);
-      expect(result.remainingBalance).toBe(55000); // 100,000 - 45,000
+      const finalOrder = await orderRepository.findById(order.orderId);
+      expect(finalOrder!.finalAmount).toBe(45000);
+      expect(finalOrder!.paidAt).not.toBeNull();
 
       // Then: 사용자 잔액 확인
       const finalUser = await userRepository.findById(user.id);
@@ -331,15 +356,28 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 2 }],
       });
 
+      const processed = awaitEvent<OrderProcessedEvent>(
+        eventEmitter,
+        OrderProcessedEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) => payload.orderId === order.orderId,
+        },
+      );
+
       // When: 쿠폰 없이 결제
-      const result = await processPaymentUseCase.processPayment({
+      await processPaymentUseCase.processPayment({
         orderId: order.orderId,
         userId: user.id,
       });
 
+      await processed;
+
       // Then: 정가로 결제됨
-      expect(result.paidAmount).toBe(60000); // 30,000 * 2
-      expect(result.remainingBalance).toBe(40000); // 100,000 - 60,000
+      const finalOrder = await orderRepository.findById(order.orderId);
+      expect(finalOrder!.finalAmount).toBe(60000); // 30,000 * 2
+      const finalUser = await userRepository.findById(user.id);
+      expect(finalUser!.balance).toBe(40000); // 100,000 - 60,000
     }, 30000);
   });
 
@@ -370,14 +408,36 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
+      const failDoneByOrder = awaitEvent<OrderProcessingFailDoneEvent>(
+        eventEmitter,
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'order',
+        },
+      );
+
+      const failDoneByProduct = awaitEvent<OrderProcessingFailDoneEvent>(
+        eventEmitter,
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'product',
+        },
+      );
+
       // When & Then: 발급받지 않은 쿠폰으로 결제 시 실패
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
+      await processPaymentUseCase.processPayment({
+        orderId: order.orderId,
+        userId: user.id,
+        couponId: coupon.id,
+      });
+
+      await Promise.all([failDoneByOrder, failDoneByProduct]);
 
       // Then: 잔액 유지
       const finalUser = await userRepository.findById(user.id);
@@ -413,14 +473,45 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
+      const failDoneByOrder = awaitEvent<OrderPaymentFailDoneEvent>(
+        eventEmitter,
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'order',
+        },
+      );
+      const failDoneByProduct = awaitEvent<OrderPaymentFailDoneEvent>(
+        eventEmitter,
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'product',
+        },
+      );
+      const failDoneByCoupon = awaitEvent<OrderPaymentFailDoneEvent>(
+        eventEmitter,
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'coupon',
+        },
+      );
+
       // When & Then: 잔액 부족으로 결제 실패
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
+      await processPaymentUseCase.processPayment({
+        orderId: order.orderId,
+        userId: user.id,
+        couponId: coupon.id,
+      });
+
+      await Promise.all([failDoneByOrder, failDoneByProduct, failDoneByCoupon]);
 
       // Then: 잔액 유지
       const finalUser = await userRepository.findById(user.id);
@@ -463,11 +554,22 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         userId: user.id,
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
+
+      const processedOrder1 = awaitEvent<OrderProcessedEvent>(
+        eventEmitter,
+        OrderProcessedEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) => payload.orderId === order1.orderId,
+        },
+      );
       await processPaymentUseCase.processPayment({
         orderId: order1.orderId,
         userId: user.id,
         couponId: coupon.id,
       });
+
+      await processedOrder1;
 
       // Given: 두 번째 주문 생성
       const order2 = await createOrderUseCase.createOrder({
@@ -475,14 +577,35 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
+      const failDoneOrder2ByOrder = awaitEvent<OrderProcessingFailDoneEvent>(
+        eventEmitter,
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order2.orderId &&
+            payload.handlerName === 'order',
+        },
+      );
+      const failDoneOrder2ByProduct = awaitEvent<OrderProcessingFailDoneEvent>(
+        eventEmitter,
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order2.orderId &&
+            payload.handlerName === 'product',
+        },
+      );
+
       // When & Then: 이미 사용된 쿠폰으로 결제 시 실패
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order2.orderId,
-          userId: user.id,
-          couponId: coupon.id,
-        }),
-      ).rejects.toThrow();
+      await processPaymentUseCase.processPayment({
+        orderId: order2.orderId,
+        userId: user.id,
+        couponId: coupon.id,
+      });
+
+      await Promise.all([failDoneOrder2ByOrder, failDoneOrder2ByProduct]);
     }, 30000);
   });
 
@@ -516,6 +639,15 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
+      const processed = awaitEvent<OrderProcessedEvent>(
+        eventEmitter,
+        OrderProcessedEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) => payload.orderId === order.orderId,
+        },
+      );
+
       // When: 동시에 3회 결제 클릭 시뮬레이션
       const results = await Promise.allSettled([
         processPaymentUseCase.processPayment({
@@ -541,6 +673,8 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
 
       expect(successResults.length).toBe(1);
       expect(failedResults.length).toBe(2);
+
+      await processed;
 
       // Then: 잔액은 1회만 차감됨 (10,000 * 90% = 9,000)
       const finalUser = await userRepository.findById(user.id);
@@ -592,6 +726,46 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         items: [{ productOptionId: productOption.id, quantity: 1 }],
       });
 
+      const orderIds = [order1.orderId, order2.orderId, order3.orderId];
+      const orderIdSet = new Set(orderIds);
+
+      const processedPromise = awaitEvent<OrderProcessedEvent>(
+        eventEmitter,
+        OrderProcessedEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (e) => orderIdSet.has(e.orderId),
+        },
+      );
+
+      const failHandledOrderIds = new Set<number>();
+      const failHandledPromise = new Promise<void>((resolve, reject) => {
+        let timer: NodeJS.Timeout;
+
+        const handler = (payload: OrderProcessingFailDoneEvent) => {
+          if (!orderIdSet.has(payload.orderId)) return;
+          if (payload.handlerName !== 'order') return;
+
+          failHandledOrderIds.add(payload.orderId);
+          if (failHandledOrderIds.size >= 2) {
+            clearTimeout(timer);
+            eventEmitter.off(OrderProcessingFailDoneEvent.EVENT_NAME, handler);
+            resolve();
+          }
+        };
+
+        timer = setTimeout(() => {
+          eventEmitter.off(OrderProcessingFailDoneEvent.EVENT_NAME, handler);
+          reject(
+            new Error(
+              `awaitEvent timeout after 20000ms: ${OrderProcessingFailDoneEvent.EVENT_NAME}`,
+            ),
+          );
+        }, 20000);
+
+        eventEmitter.on(OrderProcessingFailDoneEvent.EVENT_NAME, handler);
+      });
+
       // When: 동일 쿠폰으로 3개 주문에 동시 결제 시도
       const results = await Promise.allSettled([
         processPaymentUseCase.processPayment({
@@ -611,12 +785,15 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
         }),
       ]);
 
-      // Then: 1회만 성공 (쿠폰은 1회만 사용 가능)
+      // Then: 요청은 모두 접수되지만, 쿠폰은 1회만 사용 가능하므로 결과는 1건만 성공
       const successResults = results.filter((r) => r.status === 'fulfilled');
       const failedResults = results.filter((r) => r.status === 'rejected');
 
-      expect(successResults.length).toBe(1);
-      expect(failedResults.length).toBe(2);
+      expect(successResults.length).toBe(3);
+      expect(failedResults.length).toBe(0);
+
+      const processed = await processedPromise;
+      await failHandledPromise;
 
       // Then: Redis에서 쿠폰은 사용된 상태
       const redisUserCoupon = await getRedisUserCouponOrNull(
@@ -684,6 +861,15 @@ describe('결제 처리 - Redis 쿠폰 활용 통합 테스트', () => {
       // Then: 1회만 성공
       const successResults = results.filter((r) => r.status === 'fulfilled');
       expect(successResults.length).toBe(1);
+
+      await awaitEvent<OrderProcessedEvent>(
+        eventEmitter,
+        OrderProcessedEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (e) => e.orderId === order.orderId,
+        },
+      );
 
       // Then: 잔액은 1회만 차감
       const finalUser = await userRepository.findById(user.id);

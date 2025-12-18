@@ -6,18 +6,17 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 // event
 import { OrderPaymentEvent } from '@/order/application/events/order-payment.event';
 import { OrderPaymentFailEvent } from '@/order/application/events/order-payment-fail.event';
+import { OrderPaymentSuccessEvent } from '@/order/application/events/order-payment-success.event';
 
 // service
 import { UserDomainService } from '@/user/domain/services/user.service';
-import { User } from '@/user/domain/entities/user.entity';
 
 /**
  * onOrderPayment - 주문 결제 완료 시 잔액 차감
  *
  * 수신: order.payment
- * 반환: UserBalanceDeductByOrderResult (동기적 응답)
- * 발행: balance.deducted (성공 시)
- *       balance.deducted.failed (실패 시)
+ * 발행: order.payment.success (성공 시)
+ *       order.payment.fail (실패 시)
  */
 @Injectable()
 export class OnOrderPaymentListener {
@@ -30,7 +29,7 @@ export class OnOrderPaymentListener {
   @OnEvent(OrderPaymentEvent.EVENT_NAME)
   async handleUserBalanceDeductByOrder(
     event: OrderPaymentEvent,
-  ): Promise<UserBalanceDeductByOrderResult> {
+  ): Promise<void> {
     const { order, userId } = event;
 
     try {
@@ -50,17 +49,23 @@ export class OnOrderPaymentListener {
         `[onOrderPayment] 잔액 차감 성공 - orderId: ${order.id}, userId: ${userId}, remainingBalance: ${user.balance}`,
       );
 
-      return {
-        listenerName: 'UserBalanceDeductByOrder',
-        user,
-      };
+      this.eventEmitter.emit(
+        OrderPaymentSuccessEvent.EVENT_NAME,
+        new OrderPaymentSuccessEvent(
+          event.orderId,
+          userId,
+          event.couponId,
+          order,
+          event.orderItems,
+        ),
+      );
     } catch (error) {
       this.logger.warn(
         `[onOrderPayment] 잔액 차감 실패 - orderId: ${order.id}, userId: ${userId}, reason: ${error.message}`,
       );
 
-      // order.payment.fail 이벤트 발행 (보상 트랜잭션 트리거) - 동기적으로 완료 대기
-      await this.eventEmitter.emitAsync(
+      // order.payment.fail 이벤트 발행 (보상 트랜잭션 트리거)
+      this.eventEmitter.emit(
         OrderPaymentFailEvent.EVENT_NAME,
         new OrderPaymentFailEvent(
           event.orderId,
@@ -69,23 +74,9 @@ export class OnOrderPaymentListener {
           order,
           event.orderItems,
           'UserBalanceDeductByOrder',
-          error,
+          error as Error,
         ),
       );
-
-      return {
-        listenerName: 'UserBalanceDeductByOrder',
-        error: error as Error,
-      };
     }
   }
-}
-
-/**
- * 잔액 차감 결과 (동기적 응답용)
- */
-export interface UserBalanceDeductByOrderResult {
-  listenerName: 'UserBalanceDeductByOrder';
-  user?: User;
-  error?: Error;
 }

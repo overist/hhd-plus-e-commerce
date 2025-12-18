@@ -4,6 +4,13 @@
 
 이 문서는 hhplus-e-commerce 프로젝트의 아키텍처 설계 원칙과 패턴을 상세히 설명합니다.
 
+### 🔗 관련 문서
+
+- 이벤트 기반(코레오그래피) 결제 설계: [CHOREOGRAPHY-ARCHITECTURE.md](./CHOREOGRAPHY-ARCHITECTURE.md)
+- 이벤트 흐름(코레오그래피) 다이어그램: [CHOREOGRAPHY-FLOW-DIAGRAM.md](./CHOREOGRAPHY-FLOW-DIAGRAM.md)
+- (참고) 기존 이벤트 기반 설계 문서: [EVENT-DRIVEN-ARCHITECTURE.md](./EVENT-DRIVEN-ARCHITECTURE.md)
+- (참고) 기존 이벤트 흐름 다이어그램: [EVENT-FLOW-DIAGRAM.md](./EVENT-FLOW-DIAGRAM.md)
+
 ---
 
 ## 📁 폴더 구조

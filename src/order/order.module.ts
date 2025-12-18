@@ -19,10 +19,10 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
 import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
-// Orchestrators
-import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
-
 // Event Listeners
+import { OnOrderProcessingListener } from '@/order/application/listeners/on-order-processing.listener';
+import { OnOrderProcessingSuccessListener } from '@/order/application/listeners/on-order-processing-success.listener';
+import { OnOrderPaymentSuccessListener } from '@/order/application/listeners/on-order-payment-success.listener';
 import { OnOrderProcessedListener } from '@/order/application/listeners/on-order-processed.listener';
 import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
 
@@ -62,11 +62,11 @@ import { ExternalPlatformKafkaConsumer } from '@/order/presentation/consumers/ex
     GetOrderDetailUseCase,
 
     // Event Listeners
+    OnOrderProcessingListener,
+    OnOrderProcessingSuccessListener,
+    OnOrderPaymentSuccessListener,
     OnOrderProcessedListener,
     OnOrderFailListener,
-
-    // Event Orchestrators
-    PaymentOrchestrator,
 
     // Infrastructure Services
     OrderKafkaProducer,

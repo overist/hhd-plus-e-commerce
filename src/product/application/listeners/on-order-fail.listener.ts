@@ -1,10 +1,12 @@
 // core
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 
 // event
 import { OrderProcessingFailEvent } from '@/order/application/events/order-processing-fail.event';
 import { OrderPaymentFailEvent } from '@/order/application/events/order-payment-fail.event';
+import { OrderProcessingFailDoneEvent } from '@/order/application/events/order-processing-fail-done.event';
+import { OrderPaymentFailDoneEvent } from '@/order/application/events/order-payment-fail-done.event';
 
 // service
 import { ProductDomainService } from '@/product/domain/services/product.service';
@@ -17,7 +19,10 @@ import { ProductDomainService } from '@/product/domain/services/product.service'
  */
 @Injectable()
 export class OnOrderFailListener {
-  constructor(private readonly productService: ProductDomainService) {}
+  constructor(
+    private readonly productService: ProductDomainService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
   private readonly logger = new Logger('product:' + OnOrderFailListener.name);
 
   /**
@@ -65,6 +70,11 @@ export class OnOrderFailListener {
         error,
       );
       // 보상 트랜잭션 실패는 로깅 후 별도 처리 필요 (알림, 재시도 큐 등)
+    } finally {
+      this.eventEmitter.emit(
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        new OrderProcessingFailDoneEvent(orderId, 'product'),
+      );
     }
   }
 
@@ -106,6 +116,11 @@ export class OnOrderFailListener {
         error,
       );
       // 보상 트랜잭션 실패는 로깅 후 별도 처리 필요 (알림, 재시도 큐 등)
+    } finally {
+      this.eventEmitter.emit(
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        new OrderPaymentFailDoneEvent(orderId, 'product'),
+      );
     }
   }
 }

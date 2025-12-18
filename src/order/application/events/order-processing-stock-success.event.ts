@@ -2,14 +2,13 @@ import { OrderItem } from '@/order/domain/entities/order-item.entity';
 import { Order } from '@/order/domain/entities/order.entity';
 
 /**
- * 주문 결제 완료 이벤트
+ * 주문 처리 성공 이벤트 (재고 확정)
  *
- * 이벤트명: order.processed
- * 발행: ProcessPaymentUseCase (주문 결제 처리 완료 시)
- * 구독: onOrderProcessed (데이터 플랫폼 전송, 인기 상품 집계)
+ * 이벤트명: order.processing.stock.success
+ * 발행: product OnOrderProcessingListener
  */
-export class OrderProcessedEvent {
-  static readonly EVENT_NAME = 'order.processed';
+export class OrderProcessingStockSuccessEvent {
+  static readonly EVENT_NAME = 'order.processing.stock.success';
 
   constructor(
     public readonly orderId: number,

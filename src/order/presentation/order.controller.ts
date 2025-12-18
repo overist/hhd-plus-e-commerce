@@ -79,15 +79,15 @@ export class OrderController {
    */
   @Post('orders/:orderId/payment')
   @UseGuards(AuthGuard)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '결제 처리',
     description: '주문에 대한 결제를 처리합니다.',
   })
   @ApiParam({ name: 'orderId', description: '주문 ID' })
   @ApiResponse({
-    status: 200,
-    description: '결제 완료',
+    status: 201,
+    description: '결제 요청 접수',
     type: ProcessPaymentResponse,
   })
   @ApiResponse({ status: 400, description: '잔액 부족 또는 주문서 만료' })

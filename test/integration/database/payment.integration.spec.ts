@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
 import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
 import { OrderDomainService } from '@/order/domain/services/order.service';
@@ -55,7 +56,9 @@ import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-pa
 import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
 import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
 import { OnOrderFailListener as OrderOnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
-import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
+import { OnOrderProcessingListener as OrderOnOrderProcessingListener } from '@/order/application/listeners/on-order-processing.listener';
+import { OnOrderProcessingSuccessListener } from '@/order/application/listeners/on-order-processing-success.listener';
+import { OnOrderPaymentSuccessListener } from '@/order/application/listeners/on-order-payment-success.listener';
 
 import {
   setupDatabaseTest,
@@ -66,8 +69,13 @@ import {
   teardownIntegrationTest,
 } from '../setup';
 
+import { awaitEvent } from '../helpers/await-event';
+import { OrderProcessedEvent } from '@/order/application/events/order-processed.event';
+import { OrderPaymentFailDoneEvent } from '@/order/application/events/order-payment-fail-done.event';
+
 describe('결제 처리 통합 테스트 (US-009)', () => {
   let module: TestingModule;
+  let eventEmitter: EventEmitter2;
   let prismaService: PrismaService;
   let redisService: RedisService;
   let redisLockService: RedisLockService;
@@ -137,13 +145,13 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
         CreateOrderUseCase,
         ProcessPaymentUseCase,
 
-        // Orchestrators
-        PaymentOrchestrator,
-
         // Event Listeners (보상 트랜잭션 포함)
         CouponOnOrderProcessingListener,
         ProductOnOrderProcessingListener,
+        OrderOnOrderProcessingListener,
         OnOrderPaymentListener,
+        OnOrderProcessingSuccessListener,
+        OnOrderPaymentSuccessListener,
         OnOrderProcessingFailListener,
         ProductOnOrderFailListener,
         OrderOnOrderFailListener,
@@ -152,6 +160,8 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
 
     // 모듈 초기화 (이벤트 리스너 활성화)
     await module.init();
+
+    eventEmitter = module.get(EventEmitter2);
 
     createOrderUseCase = module.get(CreateOrderUseCase);
     processPaymentUseCase = module.get(ProcessPaymentUseCase);
@@ -214,6 +224,17 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
 
       // When: 3명이 동시에 결제 (잔액 차감 + 재고 확정)
+      const processedEvents = orders.map((order) =>
+        awaitEvent<OrderProcessedEvent>(
+          eventEmitter,
+          OrderProcessedEvent.EVENT_NAME,
+          {
+            timeoutMs: 20000,
+            filter: (payload) => payload.orderId === order.orderId,
+          },
+        ),
+      );
+
       await Promise.all(
         orders.map((order, idx) =>
           processPaymentUseCase.processPayment({
@@ -222,6 +243,8 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
           }),
         ),
       );
+
+      await Promise.all(processedEvents);
 
       // Then: 잔액 정확히 차감 (500,000 - 200,000 = 300,000)
       for (const user of users) {
@@ -269,13 +292,34 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       userForDeduct!.deduct(90000, 999, '테스트 차감');
       await userRepository.update(userForDeduct!);
 
-      // When: 결제 시도 (잔액 부족으로 실패)
-      await expect(
-        processPaymentUseCase.processPayment({
-          orderId: order.orderId,
-          userId: user.id,
-        }),
-      ).rejects.toThrow();
+      // When: 결제 요청 (즉시 접수)
+      const failDoneByOrder = awaitEvent<OrderPaymentFailDoneEvent>(
+        eventEmitter,
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'order',
+        },
+      );
+      const failDoneByProduct = awaitEvent<OrderPaymentFailDoneEvent>(
+        eventEmitter,
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        {
+          timeoutMs: 20000,
+          filter: (payload) =>
+            payload.orderId === order.orderId &&
+            payload.handlerName === 'product',
+        },
+      );
+
+      await processPaymentUseCase.processPayment({
+        orderId: order.orderId,
+        userId: user.id,
+      });
+
+      await Promise.all([failDoneByOrder, failDoneByProduct]);
 
       // Then: 잔액은 10,000원 유지
       const finalUser = await userRepository.findById(user.id);
