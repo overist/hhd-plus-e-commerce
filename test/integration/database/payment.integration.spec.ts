@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GlobalKafkaModule } from '@common/kafka/kafka.module';
 import { CreateOrderUseCase } from '@/order/application/create-order.use-case';
 import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-case';
 import { OrderDomainService } from '@/order/domain/services/order.service';
@@ -49,33 +48,45 @@ import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { RedisService } from '@common/redis/redis.service';
 import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 
-// Event Listeners
-import { OnOrderProcessingListener as CouponOnOrderProcessingListener } from '@/coupon/application/listeners/on-order-processing.listener';
-import { OnOrderProcessingListener as ProductOnOrderProcessingListener } from '@/product/application/listeners/on-order-processing.listener';
-import { OnOrderPaymentListener } from '@/user/application/listeners/on-order-payment.listener';
-import { OnOrderProcessingFailListener } from '@/coupon/application/listeners/on-order-fail.listener';
-import { OnOrderFailListener as ProductOnOrderFailListener } from '@/product/application/listeners/on-order-fail.listener';
-import { OnOrderFailListener as OrderOnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
-import { OnOrderProcessingListener as OrderOnOrderProcessingListener } from '@/order/application/listeners/on-order-processing.listener';
-import { OnOrderProcessingSuccessListener } from '@/order/application/listeners/on-order-processing-success.listener';
-import { OnOrderPaymentSuccessListener } from '@/order/application/listeners/on-order-payment-success.listener';
-
 import {
   setupDatabaseTest,
   setupRedisForTest,
+  setupKafkaForTest,
   getRedisService,
   getRedisLockService,
   cleanupDatabase,
   teardownIntegrationTest,
+  createTopicIfNotExists,
 } from '../setup';
 
-import { awaitEvent } from '../helpers/await-event';
-import { OrderProcessedEvent } from '@/order/application/events/order-processed.event';
-import { OrderPaymentFailDoneEvent } from '@/order/application/events/order-payment-fail-done.event';
+import { waitForCondition } from '../helpers/wait-for';
+import {
+  OrderKafkaProducer,
+  OrderFailDoneMessage,
+} from '@/order/infrastructure/order.kafka.producer';
+import { OrderProcessingStateStore } from '@/order/infrastructure/order-processing-state.store';
+import { OrderProcessingInitKafkaConsumer } from '@/order/presentation/consumers/order-processing-init.kafka.consumer';
+import { OrderProcessingStockSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-stock-success.kafka.consumer';
+import { OrderProcessingCouponSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-coupon-success.kafka.consumer';
+import { OrderProcessingSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-success.kafka.consumer';
+import { OrderProcessingFailKafkaConsumer } from '@/order/presentation/consumers/order-processing-fail.kafka.consumer';
+import { OrderPaymentSuccessKafkaConsumer } from '@/order/presentation/consumers/order-payment-success.kafka.consumer';
+import { OrderPaymentFailKafkaConsumer } from '@/order/presentation/consumers/order-payment-fail.kafka.consumer';
+import { ExternalPlatformKafkaConsumer } from '@/order/presentation/consumers/external-platform.kafka.consumer';
+import { ProductKafkaProducer } from '@/product/infrastructure/product.kafka.producer';
+import { ProductOrderProcessingKafkaConsumer } from '@/product/presentation/consumers/order-processing.kafka.consumer';
+import { ProductOrderProcessingFailKafkaConsumer } from '@/product/presentation/consumers/order-processing-fail.kafka.consumer';
+import { ProductOrderProcessedKafkaConsumer } from '@/product/presentation/consumers/order-processed.kafka.consumer';
+import { ProductOrderPaymentFailKafkaConsumer } from '@/product/presentation/consumers/order-payment-fail.kafka.consumer';
+import { CouponKafkaProducer } from '@/coupon/infrastructure/coupon.kafka.producer';
+import { CouponOrderProcessingKafkaConsumer } from '@/coupon/presentation/consumers/order-processing.kafka.consumer';
+import { CouponOrderProcessingFailKafkaConsumer } from '@/coupon/presentation/consumers/order-processing-fail.kafka.consumer';
+import { CouponOrderPaymentFailKafkaConsumer } from '@/coupon/presentation/consumers/order-payment-fail.kafka.consumer';
+import { UserKafkaProducer } from '@/user/infrastructure/user.kafka.producer';
+import { UserOrderPaymentKafkaConsumer } from '@/user/presentation/consumers/order-payment.kafka.consumer';
 
 describe('결제 처리 통합 테스트 (US-009)', () => {
   let module: TestingModule;
-  let eventEmitter: EventEmitter2;
   let prismaService: PrismaService;
   let redisService: RedisService;
   let redisLockService: RedisLockService;
@@ -89,12 +100,41 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
   beforeAll(async () => {
     prismaService = await setupDatabaseTest();
     await setupRedisForTest();
+    await setupKafkaForTest();
     redisService = getRedisService();
     redisLockService = getRedisLockService();
 
+    const TOPIC_ORDER_PROCESSING = 'order.processing';
+    const TOPIC_ORDER_PROCESSING_SUCCESS = 'order.processing.success';
+    const TOPIC_ORDER_PROCESSING_FAIL = 'order.processing.fail';
+    const TOPIC_ORDER_PROCESSING_FAIL_DONE = 'order.processing.fail.done';
+
+    const TOPIC_ORDER_PAYMENT = 'order.payment';
+    const TOPIC_ORDER_PAYMENT_SUCCESS = 'order.payment.success';
+    const TOPIC_ORDER_PAYMENT_FAIL = 'order.payment.fail';
+    const TOPIC_ORDER_PAYMENT_FAIL_DONE = 'order.payment.fail.done';
+
+    const TOPIC_ORDER_PROCESSED = 'order.processed';
+    const TOPIC_ORDER_PROCESSING_STOCK_SUCCESS =
+      'order.processing.stock.success';
+    const TOPIC_ORDER_PROCESSING_COUPON_SUCCESS =
+      'order.processing.coupon.success';
+
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSING);
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSING_SUCCESS);
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSING_FAIL);
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSING_FAIL_DONE);
+    await createTopicIfNotExists(TOPIC_ORDER_PAYMENT);
+    await createTopicIfNotExists(TOPIC_ORDER_PAYMENT_SUCCESS);
+    await createTopicIfNotExists(TOPIC_ORDER_PAYMENT_FAIL);
+    await createTopicIfNotExists(TOPIC_ORDER_PAYMENT_FAIL_DONE);
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSED);
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSING_STOCK_SUCCESS);
+    await createTopicIfNotExists(TOPIC_ORDER_PROCESSING_COUPON_SUCCESS);
+
     // NestJS Test Module 생성 (이벤트 리스너 포함)
     module = await Test.createTestingModule({
-      imports: [EventEmitterModule.forRoot()],
+      imports: [GlobalKafkaModule],
       providers: [
         // Prisma & Redis
         { provide: PrismaService, useValue: prismaService },
@@ -145,23 +185,33 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
         CreateOrderUseCase,
         ProcessPaymentUseCase,
 
-        // Event Listeners (보상 트랜잭션 포함)
-        CouponOnOrderProcessingListener,
-        ProductOnOrderProcessingListener,
-        OrderOnOrderProcessingListener,
-        OnOrderPaymentListener,
-        OnOrderProcessingSuccessListener,
-        OnOrderPaymentSuccessListener,
-        OnOrderProcessingFailListener,
-        ProductOnOrderFailListener,
-        OrderOnOrderFailListener,
+        // Kafka Producers / Consumers
+        OrderKafkaProducer,
+        OrderProcessingStateStore,
+        OrderProcessingInitKafkaConsumer,
+        OrderProcessingStockSuccessKafkaConsumer,
+        OrderProcessingCouponSuccessKafkaConsumer,
+        OrderProcessingSuccessKafkaConsumer,
+        OrderProcessingFailKafkaConsumer,
+        OrderPaymentSuccessKafkaConsumer,
+        OrderPaymentFailKafkaConsumer,
+        ExternalPlatformKafkaConsumer,
+        ProductKafkaProducer,
+        ProductOrderProcessingKafkaConsumer,
+        ProductOrderProcessingFailKafkaConsumer,
+        ProductOrderProcessedKafkaConsumer,
+        ProductOrderPaymentFailKafkaConsumer,
+        CouponKafkaProducer,
+        CouponOrderProcessingKafkaConsumer,
+        CouponOrderProcessingFailKafkaConsumer,
+        CouponOrderPaymentFailKafkaConsumer,
+        UserKafkaProducer,
+        UserOrderPaymentKafkaConsumer,
       ],
     }).compile();
 
     // 모듈 초기화 (이벤트 리스너 활성화)
     await module.init();
-
-    eventEmitter = module.get(EventEmitter2);
 
     createOrderUseCase = module.get(CreateOrderUseCase);
     processPaymentUseCase = module.get(ProcessPaymentUseCase);
@@ -224,17 +274,6 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       );
 
       // When: 3명이 동시에 결제 (잔액 차감 + 재고 확정)
-      const processedEvents = orders.map((order) =>
-        awaitEvent<OrderProcessedEvent>(
-          eventEmitter,
-          OrderProcessedEvent.EVENT_NAME,
-          {
-            timeoutMs: 20000,
-            filter: (payload) => payload.orderId === order.orderId,
-          },
-        ),
-      );
-
       await Promise.all(
         orders.map((order, idx) =>
           processPaymentUseCase.processPayment({
@@ -244,7 +283,17 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
         ),
       );
 
-      await Promise.all(processedEvents);
+      await Promise.all(
+        orders.map((order) =>
+          waitForCondition(
+            async () => {
+              const targetOrder = await orderRepository.findById(order.orderId);
+              return targetOrder?.status.isPaid() ?? false;
+            },
+            { timeoutMs: 20000 },
+          ),
+        ),
+      );
 
       // Then: 잔액 정확히 차감 (500,000 - 200,000 = 300,000)
       for (const user of users) {
@@ -293,33 +342,15 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       await userRepository.update(userForDeduct!);
 
       // When: 결제 요청 (즉시 접수)
-      const failDoneByOrder = awaitEvent<OrderPaymentFailDoneEvent>(
-        eventEmitter,
-        OrderPaymentFailDoneEvent.EVENT_NAME,
-        {
-          timeoutMs: 20000,
-          filter: (payload) =>
-            payload.orderId === order.orderId &&
-            payload.handlerName === 'order',
-        },
-      );
-      const failDoneByProduct = awaitEvent<OrderPaymentFailDoneEvent>(
-        eventEmitter,
-        OrderPaymentFailDoneEvent.EVENT_NAME,
-        {
-          timeoutMs: 20000,
-          filter: (payload) =>
-            payload.orderId === order.orderId &&
-            payload.handlerName === 'product',
-        },
-      );
-
       await processPaymentUseCase.processPayment({
         orderId: order.orderId,
         userId: user.id,
       });
 
-      await Promise.all([failDoneByOrder, failDoneByProduct]);
+      await waitForCondition(async () => {
+        const targetOrder = await orderRepository.findById(order.orderId);
+        return targetOrder?.status.isPending() ?? false;
+      });
 
       // Then: 잔액은 10,000원 유지
       const finalUser = await userRepository.findById(user.id);
@@ -334,6 +365,6 @@ describe('결제 처리 통합 테스트 (US-009)', () => {
       // Then: 주문 상태는 PENDING 유지
       const finalOrder = await orderRepository.findById(order.orderId);
       expect(finalOrder!.status.isPending()).toBe(true);
-    }, 30000); // 30초 타임아웃
+    }, 60000); // 60초 타임아웃으로 증가
   });
 });

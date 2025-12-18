@@ -19,18 +19,19 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
 import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
-// Event Listeners
-import { OnOrderProcessingListener } from '@/order/application/listeners/on-order-processing.listener';
-import { OnOrderProcessingSuccessListener } from '@/order/application/listeners/on-order-processing-success.listener';
-import { OnOrderPaymentSuccessListener } from '@/order/application/listeners/on-order-payment-success.listener';
-import { OnOrderProcessedListener } from '@/order/application/listeners/on-order-processed.listener';
-import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
-
 // Infrastructure Services
 import { OrderKafkaProducer } from '@/order/infrastructure/order.kafka.producer';
+import { OrderProcessingStateStore } from '@/order/infrastructure/order-processing-state.store';
 
 // Kafka Consumers
 import { ExternalPlatformKafkaConsumer } from '@/order/presentation/consumers/external-platform.kafka.consumer';
+import { OrderProcessingInitKafkaConsumer } from '@/order/presentation/consumers/order-processing-init.kafka.consumer';
+import { OrderProcessingStockSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-stock-success.kafka.consumer';
+import { OrderProcessingCouponSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-coupon-success.kafka.consumer';
+import { OrderProcessingSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-success.kafka.consumer';
+import { OrderProcessingFailKafkaConsumer } from '@/order/presentation/consumers/order-processing-fail.kafka.consumer';
+import { OrderPaymentSuccessKafkaConsumer } from '@/order/presentation/consumers/order-payment-success.kafka.consumer';
+import { OrderPaymentFailKafkaConsumer } from '@/order/presentation/consumers/order-payment-fail.kafka.consumer';
 
 /**
  * Order Module
@@ -61,18 +62,18 @@ import { ExternalPlatformKafkaConsumer } from '@/order/presentation/consumers/ex
     GetOrdersUseCase,
     GetOrderDetailUseCase,
 
-    // Event Listeners
-    OnOrderProcessingListener,
-    OnOrderProcessingSuccessListener,
-    OnOrderPaymentSuccessListener,
-    OnOrderProcessedListener,
-    OnOrderFailListener,
-
     // Infrastructure Services
     OrderKafkaProducer,
+    OrderProcessingStateStore,
 
     // Kafka Consumer
-    // TODO API 서버는 애플리케이션 계층만, 컨슈머 서버는 컨슈머 계층만 써야함
+    OrderProcessingInitKafkaConsumer,
+    OrderProcessingStockSuccessKafkaConsumer,
+    OrderProcessingCouponSuccessKafkaConsumer,
+    OrderProcessingSuccessKafkaConsumer,
+    OrderProcessingFailKafkaConsumer,
+    OrderPaymentSuccessKafkaConsumer,
+    OrderPaymentFailKafkaConsumer,
     ExternalPlatformKafkaConsumer,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],

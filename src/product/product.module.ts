@@ -17,12 +17,11 @@ import { GetProductsUseCase } from '@/product/application/get-products.use-case'
 import { GetProductDetailUseCase } from '@/product/application/get-product-detail.use-case';
 import { GetTopProductsUseCase } from '@/product/application/get-top-products.use-case';
 import { UpdateStockUseCase } from '@/product/application/update-stock.use-case';
-
-// Event Listeners
-
-import { OnOrderProcessingListener } from './application/listeners/on-order-processing.listener';
-import { OnOrderProcessedListener } from './application/listeners/on-order-processed.listener';
-import { OnOrderFailListener } from './application/listeners/on-order-fail.listener';
+import { ProductKafkaProducer } from '@/product/infrastructure/product.kafka.producer';
+import { ProductOrderProcessingKafkaConsumer } from '@/product/presentation/consumers/order-processing.kafka.consumer';
+import { ProductOrderProcessedKafkaConsumer } from '@/product/presentation/consumers/order-processed.kafka.consumer';
+import { ProductOrderProcessingFailKafkaConsumer } from '@/product/presentation/consumers/order-processing-fail.kafka.consumer';
+import { ProductOrderPaymentFailKafkaConsumer } from '@/product/presentation/consumers/order-payment-fail.kafka.consumer';
 
 /**
  * Product Module
@@ -58,10 +57,12 @@ import { OnOrderFailListener } from './application/listeners/on-order-fail.liste
     GetTopProductsUseCase,
     UpdateStockUseCase,
 
-    // Event Listeners
-    OnOrderProcessingListener,
-    OnOrderProcessedListener,
-    OnOrderFailListener, // 보상 트랜잭션 리스너
+    // Kafka Producer/Consumers
+    ProductKafkaProducer,
+    ProductOrderProcessingKafkaConsumer,
+    ProductOrderProcessedKafkaConsumer,
+    ProductOrderProcessingFailKafkaConsumer,
+    ProductOrderPaymentFailKafkaConsumer,
   ],
   exports: [
     ProductDomainService,

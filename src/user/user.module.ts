@@ -12,9 +12,8 @@ import {
   UserBalanceChangeLogRepository,
 } from '@/user/infrastructure/user.repository';
 import { UserController } from '@/user/presentation/user.controller';
-
-// Event Listeners
-import { OnOrderPaymentListener } from './application/listeners/on-order-payment.listener';
+import { UserKafkaProducer } from '@/user/infrastructure/user.kafka.producer';
+import { UserOrderPaymentKafkaConsumer } from '@/user/presentation/consumers/order-payment.kafka.consumer';
 
 /**
  * User Module
@@ -43,8 +42,9 @@ import { OnOrderPaymentListener } from './application/listeners/on-order-payment
     GetBalanceLogsUseCase,
     ChargeBalanceUseCase,
 
-    // Event Listeners
-    OnOrderPaymentListener,
+    // Kafka Producer/Consumers
+    UserKafkaProducer,
+    UserOrderPaymentKafkaConsumer,
   ],
   exports: [
     UserDomainService,
