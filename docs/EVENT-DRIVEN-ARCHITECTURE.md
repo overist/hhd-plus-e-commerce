@@ -2,6 +2,7 @@
 
 > 이 문서는 결제 처리 유즈케이스에 이벤트 기반 아키텍처를 적용한 사례를 다룹니다.
 > 결제 처리 유즈케이스의 상세 이벤트 구성 및 흐름도는 [EVENT-FLOW-DIAGRAM.md](./EVENT-FLOW-DIAGRAM.md) 문서를 참고하세요.
+> 외부플랫폼 데이터 전송을 Kafka로 부하 분산하는 설계는 [KAFKA_EXTERNAL_PLATFORM_DESIGN.md](./KAFKA_EXTERNAL_PLATFORM_DESIGN.md) 문서를 참고하세요.
 
 ---
 

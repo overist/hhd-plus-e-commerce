@@ -1,6 +1,7 @@
 # 📋 ProcessOrder Usecase 이벤트 흐름 다이어그램 문서
 
 > 이 문서는 애플리케이션의 유즈케이스와 이벤트 기반 아키텍처를 설명합니다.
+> 외부플랫폼 데이터 전송을 Kafka로 분리/부하 분산하는 설계는 [KAFKA_EXTERNAL_PLATFORM_DESIGN.md](./KAFKA_EXTERNAL_PLATFORM_DESIGN.md) 문서를 참고하세요.
 
 ---
 

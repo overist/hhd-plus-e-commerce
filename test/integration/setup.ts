@@ -1,16 +1,24 @@
 import { MySqlContainer, StartedMySqlContainer } from '@testcontainers/mysql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
+import { KafkaContainer, StartedKafkaContainer } from '@testcontainers/kafka';
 import { execSync } from 'child_process';
 import * as path from 'path';
+import { Kafka, Producer, Consumer, Admin, logLevel } from 'kafkajs';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
 import { RedisService } from '@common/redis/redis.service';
 
 let mysqlContainer: StartedMySqlContainer;
 let redisContainer: StartedRedisContainer;
+let kafkaContainer: StartedKafkaContainer;
 let prismaService: PrismaService;
 let redisLockService: RedisLockService;
 let redisService: RedisService;
+let kafkaClient: Kafka;
+let kafkaProducer: Producer;
+let kafkaAdmin: Admin;
+
+const KAFKA_PORT = 9093;
 
 /**
  * 모든 통합 테스트 시작 전 한 번만 실행
@@ -115,6 +123,92 @@ export function getRedisService(): RedisService {
 }
 
 /**
+ * Kafka 컨테이너 시작 및 클라이언트 초기화
+ * - testcontainers/kafka는 Confluent Platform 이미지 사용
+ * - KRaft 모드는 7.0.0 이상 필요
+ */
+export async function setupKafkaForTest(): Promise<{
+  kafkaClient: Kafka;
+  producer: Producer;
+  admin: Admin;
+}> {
+  if (!kafkaContainer) {
+    console.log('🚀 Kafka 컨테이너 시작 중...');
+
+    // Confluent Platform 이미지 (KRaft 모드, 7.5.0)
+    kafkaContainer = await new KafkaContainer('confluentinc/cp-kafka:7.5.0')
+      .withKraft()
+      .start();
+
+    // 브로커 주소 얻기 (testcontainers가 노출한 포트 사용)
+    const host = kafkaContainer.getHost();
+    const mappedPort = kafkaContainer.getMappedPort(KAFKA_PORT);
+    const brokers = [`${host}:${mappedPort}`];
+
+    console.log(`📍 Kafka 브로커 주소: ${brokers[0]}`);
+
+    process.env.KAFKA_BROKERS = brokers[0];
+    process.env.KAFKA_CLIENT_ID = 'test-client';
+
+    // Kafka 클라이언트 생성 (로그 레벨 최소화)
+    kafkaClient = new Kafka({
+      clientId: 'test-client',
+      brokers,
+      logLevel: logLevel.ERROR,
+    });
+
+    // Admin 클라이언트 연결
+    kafkaAdmin = kafkaClient.admin();
+    await kafkaAdmin.connect();
+
+    // Producer 연결
+    kafkaProducer = kafkaClient.producer();
+    await kafkaProducer.connect();
+
+    console.log(`✅ Kafka 컨테이너 시작 완료 - brokers: ${brokers.join(',')}`);
+  }
+
+  return { kafkaClient, producer: kafkaProducer, admin: kafkaAdmin };
+}
+
+/**
+ * Kafka 클라이언트 반환
+ */
+export function getKafkaClient(): Kafka {
+  return kafkaClient;
+}
+
+/**
+ * Kafka Producer 반환
+ */
+export function getKafkaProducer(): Producer {
+  return kafkaProducer;
+}
+
+/**
+ * Kafka Admin 반환
+ */
+export function getKafkaAdmin(): Admin {
+  return kafkaAdmin;
+}
+
+/**
+ * Kafka 토픽 생성 (없으면)
+ */
+export async function createTopicIfNotExists(
+  topic: string,
+  numPartitions = 1,
+): Promise<void> {
+  const topics = await kafkaAdmin.listTopics();
+  if (!topics.includes(topic)) {
+    await kafkaAdmin.createTopics({
+      topics: [{ topic, numPartitions }],
+    });
+    console.log(`📝 토픽 생성됨: ${topic}`);
+  }
+}
+
+/**
  * 각 테스트 후 데이터 정리
  */
 export async function cleanupDatabase(prisma: PrismaService): Promise<void> {
@@ -197,5 +291,24 @@ export async function teardownIntegrationTest(): Promise<void> {
     await redisContainer.stop();
     console.log('✅ Redis 컨테이너 종료 완료');
     redisContainer = null as any;
+  }
+
+  // Kafka 정리
+  if (kafkaProducer) {
+    await kafkaProducer.disconnect().catch(() => {});
+    kafkaProducer = null as any;
+  }
+
+  if (kafkaAdmin) {
+    await kafkaAdmin.disconnect().catch(() => {});
+    kafkaAdmin = null as any;
+  }
+
+  kafkaClient = null as any;
+
+  if (kafkaContainer) {
+    await kafkaContainer.stop();
+    console.log('✅ Kafka 컨테이너 종료 완료');
+    kafkaContainer = null as any;
   }
 }
