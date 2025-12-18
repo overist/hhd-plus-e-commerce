@@ -183,7 +183,7 @@ export class OrderKafkaProducer {
       topic: TOPIC_ORDER_PROCESSED,
       messages: [
         {
-          key: String(message.orderId),
+          // key: String(message.orderId),
           value: JSON.stringify(message),
         },
       ],
