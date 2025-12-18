@@ -4,6 +4,9 @@
 > 결제 처리 유즈케이스의 상세 이벤트 구성 및 흐름도는 [EVENT-FLOW-DIAGRAM.md](./EVENT-FLOW-DIAGRAM.md) 문서를 참고하세요.
 > 외부플랫폼 데이터 전송을 Kafka로 부하 분산하는 설계는 [KAFKA_EXTERNAL_PLATFORM_DESIGN.md](./KAFKA_EXTERNAL_PLATFORM_DESIGN.md) 문서를 참고하세요.
 
+> 참고: 현재 구현은 코레오그래피 기반 이벤트 체인으로 전환되어 있습니다.
+> 최신 설계/흐름은 [CHOREOGRAPHY-ARCHITECTURE.md](./CHOREOGRAPHY-ARCHITECTURE.md), [CHOREOGRAPHY-FLOW-DIAGRAM.md](./CHOREOGRAPHY-FLOW-DIAGRAM.md)를 참고하세요.
+
 ---
 
 ## 📑 목차
