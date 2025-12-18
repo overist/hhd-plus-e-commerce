@@ -8,6 +8,7 @@ export class OrderStatus {
   private constructor(public readonly value: string) {}
 
   static readonly PENDING = new OrderStatus('PENDING');
+  static readonly PAYMENT_PROCESSING = new OrderStatus('PAYMENT_PROCESSING');
   static readonly PAID = new OrderStatus('PAID');
   static readonly CANCELLED = new OrderStatus('CANCELLED');
   static readonly EXPIRED = new OrderStatus('EXPIRED');
@@ -17,6 +18,8 @@ export class OrderStatus {
     switch (normalized) {
       case 'PENDING':
         return OrderStatus.PENDING;
+      case 'PAYMENT_PROCESSING':
+        return OrderStatus.PAYMENT_PROCESSING;
       case 'PAID':
         return OrderStatus.PAID;
       case 'CANCELLED':
@@ -38,6 +41,10 @@ export class OrderStatus {
 
   isPaid(): boolean {
     return this === OrderStatus.PAID;
+  }
+
+  isPaymentProcessing(): boolean {
+    return this === OrderStatus.PAYMENT_PROCESSING;
   }
 
   isCancelled(): boolean {

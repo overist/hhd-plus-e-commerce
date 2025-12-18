@@ -48,22 +48,14 @@ export class ProcessPaymentResponse {
   @ApiProperty({ description: '주문 상태' })
   status: string;
 
-  @ApiProperty({ description: '결제 금액' })
-  paidAmount: number;
-
-  @ApiProperty({ description: '잔여 잔액' })
-  remainingBalance: number;
-
-  @ApiProperty({ description: '결제 완료 시각' })
-  paidAt: Date;
+  @ApiProperty({ description: '결제 요청 접수 시각' })
+  requestedAt: Date;
 
   static fromResult(result: ProcessPaymentResult): ProcessPaymentResponse {
     const response = new ProcessPaymentResponse();
     response.orderId = result.orderId;
     response.status = result.status;
-    response.paidAmount = result.paidAmount;
-    response.remainingBalance = result.remainingBalance;
-    response.paidAt = result.paidAt;
+    response.requestedAt = result.requestedAt;
     return response;
   }
 }
