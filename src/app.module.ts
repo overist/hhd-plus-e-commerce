@@ -6,6 +6,7 @@ import { GlobalPrismaModule } from './@common/prisma-manager/prisma.module';
 import { GlobalRedisModule } from './@common/redis/redis.module';
 import { GlobalRedisLockModule } from './@common/redis-lock-manager/redis.lock.module';
 import { GlobalCacheModule } from './@common/cache-manager/cache.module';
+import { GlobalKafkaModule } from './@common/kafka/kafka.module';
 import { HealthModule } from './@common/health/health.module';
 
 // AUTH MODULE
@@ -27,6 +28,7 @@ import { SchedulerModule } from './@schedulers/scheduler.module';
     GlobalRedisModule,
     GlobalRedisLockModule,
     GlobalCacheModule,
+    GlobalKafkaModule,
     HealthModule,
 
     // AUTH MODULE

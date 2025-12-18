@@ -320,8 +320,8 @@ describe('Order Entity', () => {
     });
   });
 
-  describe('pay', () => {
-    it('결제 가능한 주문을 결제하고 상태를 PAID로 변경한다', () => {
+  describe('beginPaymentProcessing / completePayment', () => {
+    it('결제 가능한 주문을 결제 처리로 전환하고 최종적으로 PAID로 변경한다', () => {
       // given
       const createdAt = new Date();
       const expiredAt = new Date(createdAt.getTime() + 10 * 60 * 1000);
@@ -340,7 +340,8 @@ describe('Order Entity', () => {
       );
 
       // when
-      order.pay();
+      order.beginPaymentProcessing();
+      order.completePayment();
 
       // then
       expect(order.status).toBe(OrderStatus.PAID);
@@ -348,7 +349,7 @@ describe('Order Entity', () => {
       expect(order.updatedAt).toBeDefined();
     });
 
-    it('이미 결제된 주문을 결제하려 하면 ALREADY_PAID 예외를 던진다', () => {
+    it('이미 결제된 주문을 결제 처리로 전환하려 하면 ALREADY_PAID 예외를 던진다', () => {
       // given
       const createdAt = new Date();
       const expiredAt = new Date(createdAt.getTime() + 10 * 60 * 1000);
@@ -367,10 +368,10 @@ describe('Order Entity', () => {
       );
 
       // when & then
-      expect(() => order.pay()).toThrow(DomainException);
+      expect(() => order.beginPaymentProcessing()).toThrow(DomainException);
 
       try {
-        order.pay();
+        order.beginPaymentProcessing();
       } catch (error) {
         expect(error).toBeInstanceOf(DomainException);
         expect((error as DomainException).errorCode).toBe(
@@ -379,7 +380,7 @@ describe('Order Entity', () => {
       }
     });
 
-    it('만료된 주문을 결제하려 하면 ORDER_EXPIRED 예외를 던진다', () => {
+    it('만료된 주문을 결제 처리로 전환하려 하면 ORDER_EXPIRED 예외를 던진다', () => {
       // given
       const createdAt = new Date(Date.now() - 20 * 60 * 1000);
       const expiredAt = new Date(createdAt.getTime() + 10 * 60 * 1000);
@@ -398,10 +399,10 @@ describe('Order Entity', () => {
       );
 
       // when & then
-      expect(() => order.pay()).toThrow(DomainException);
+      expect(() => order.beginPaymentProcessing()).toThrow(DomainException);
 
       try {
-        order.pay();
+        order.beginPaymentProcessing();
       } catch (error) {
         expect(error).toBeInstanceOf(DomainException);
         expect((error as DomainException).errorCode).toBe(

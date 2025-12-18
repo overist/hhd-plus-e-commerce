@@ -74,9 +74,9 @@ export class Order {
   }
 
   /**
-   * ANCHOR 결제 처리
+   * ANCHOR 결제 요청 시작 (비동기 처리)
    */
-  pay(): void {
+  beginPaymentProcessing(): void {
     if (!this.canPay()) {
       if (this.status.isPaid()) {
         throw new DomainException(ErrorCode.ALREADY_PAID);
@@ -84,9 +84,23 @@ export class Order {
       if (this.isExpired()) {
         throw new DomainException(ErrorCode.ORDER_EXPIRED);
       }
-      throw new DomainException(ErrorCode.PAYMENT_FAILED);
+      throw new DomainException(ErrorCode.INVALID_ORDER_STATUS);
     }
 
+    this.status = OrderStatus.PAYMENT_PROCESSING;
+    this.updatedAt = new Date();
+  }
+
+  /**
+   * ANCHOR 결제 완료
+   */
+  completePayment(): void {
+    if (this.status.isPaid()) {
+      return;
+    }
+    if (!this.status.isPaymentProcessing()) {
+      throw new DomainException(ErrorCode.INVALID_ORDER_STATUS);
+    }
     this.status = OrderStatus.PAID;
     this.paidAt = new Date();
     this.updatedAt = new Date();
@@ -137,7 +151,7 @@ export class Order {
    * 결제 실패 시 주문 상태를 PENDING으로 되돌림
    */
   cancelPayment(): void {
-    if (!this.status.isPaid()) {
+    if (!(this.status.isPaid() || this.status.isPaymentProcessing())) {
       throw new DomainException(ErrorCode.INVALID_ORDER_STATUS);
     }
 

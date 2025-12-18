@@ -186,7 +186,8 @@ describe('OrderDomainService', () => {
         futureTime,
         new Date(),
       );
-      order.pay();
+      order.beginPaymentProcessing();
+      order.completePayment();
       orderRepository.update.mockResolvedValue(order as any);
 
       // when

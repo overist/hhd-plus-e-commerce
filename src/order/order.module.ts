@@ -19,12 +19,19 @@ import { ProcessPaymentUseCase } from '@/order/application/process-payment.use-c
 import { GetOrdersUseCase } from '@/order/application/get-orders.use-case';
 import { GetOrderDetailUseCase } from '@/order/application/get-order-detail.use-case';
 
-// Orchestrators
-import { PaymentOrchestrator } from '@/order/application/orchestrators/payment.orchestrator';
+// Infrastructure Services
+import { OrderKafkaProducer } from '@/order/infrastructure/order.kafka.producer';
+import { OrderProcessingStateStore } from '@/order/infrastructure/order-processing-state.store';
 
-// Event Listeners
-import { OnOrderProcessedListener } from '@/order/application/listeners/on-order-processed.listener';
-import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail.listener';
+// Kafka Consumers
+import { ExternalPlatformKafkaConsumer } from '@/order/presentation/consumers/external-platform.kafka.consumer';
+import { OrderProcessingInitKafkaConsumer } from '@/order/presentation/consumers/order-processing-init.kafka.consumer';
+import { OrderProcessingStockSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-stock-success.kafka.consumer';
+import { OrderProcessingCouponSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-coupon-success.kafka.consumer';
+import { OrderProcessingSuccessKafkaConsumer } from '@/order/presentation/consumers/order-processing-success.kafka.consumer';
+import { OrderProcessingFailKafkaConsumer } from '@/order/presentation/consumers/order-processing-fail.kafka.consumer';
+import { OrderPaymentSuccessKafkaConsumer } from '@/order/presentation/consumers/order-payment-success.kafka.consumer';
+import { OrderPaymentFailKafkaConsumer } from '@/order/presentation/consumers/order-payment-fail.kafka.consumer';
 
 /**
  * Order Module
@@ -55,12 +62,19 @@ import { OnOrderFailListener } from '@/order/application/listeners/on-order-fail
     GetOrdersUseCase,
     GetOrderDetailUseCase,
 
-    // Event Listeners
-    OnOrderProcessedListener,
-    OnOrderFailListener,
+    // Infrastructure Services
+    OrderKafkaProducer,
+    OrderProcessingStateStore,
 
-    // Event Orchestrators
-    PaymentOrchestrator,
+    // Kafka Consumer
+    OrderProcessingInitKafkaConsumer,
+    OrderProcessingStockSuccessKafkaConsumer,
+    OrderProcessingCouponSuccessKafkaConsumer,
+    OrderProcessingSuccessKafkaConsumer,
+    OrderProcessingFailKafkaConsumer,
+    OrderPaymentSuccessKafkaConsumer,
+    OrderPaymentFailKafkaConsumer,
+    ExternalPlatformKafkaConsumer,
   ],
   exports: [OrderDomainService, IOrderRepository, IOrderItemRepository],
 })

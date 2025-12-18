@@ -7,9 +7,7 @@ import {
   ProcessPaymentCommand,
   ProcessPaymentResult,
 } from './dto/process-payment.dto';
-
-// orchestrator
-import { PaymentOrchestrator } from './orchestrators/payment.orchestrator';
+import { OrderKafkaProducer } from '@/order/infrastructure/order.kafka.producer';
 
 @Injectable()
 export class ProcessPaymentUseCase {
@@ -17,7 +15,7 @@ export class ProcessPaymentUseCase {
 
   constructor(
     private readonly orderService: OrderDomainService,
-    private readonly paymentOrchestrator: PaymentOrchestrator,
+    private readonly orderKafkaProducer: OrderKafkaProducer,
     private readonly redisLockService: RedisLockService,
   ) {}
 
@@ -29,7 +27,7 @@ export class ProcessPaymentUseCase {
    * - 분산락을 통한 중복 결제 방지
    * - 주문 상태 변경 및 저장
    *
-   * 이벤트 흐름 제어는 PaymentOrchestrator에 위임
+   * 이벤트 흐름 제어는 애플리케이션 이벤트로 수행
    *
    * 동시성 제어:
    * - payment:order:{orderId} - 동일 주문에 대한 중복 결제 방지 (Redis 분산락)
@@ -45,25 +43,30 @@ export class ProcessPaymentUseCase {
     return this.redisLockService.withLock(
       lockKey,
       async () => {
-        // 1. 주문 조회 및 검증
+        // 1) 주문 조회 및 검증
         const order = await this.orderService.getOrder(cmd.orderId);
-        const orderItems = await this.orderService.getOrderItems(cmd.orderId);
         order.validateOwnedBy(cmd.userId);
-        order.pay();
 
-        // 2. 결제 오케스트레이션 실행 (이벤트 흐름 제어 위임)
-        const { user } = await this.paymentOrchestrator.runOrderProcess(
-          cmd.orderId,
-          cmd.userId,
-          cmd.couponId || null,
-          order,
-          orderItems,
-        );
+        const orderItems = await this.orderService.getOrderItems(cmd.orderId);
 
-        // 3. 주문 저장 (참조형으로 전달된 객체가 이벤트에 의해 이미 변경됨)
+        // 2) 결제 처리 시작 표시 (중복 클릭 방지)
+        order.beginPaymentProcessing();
         await this.orderService.updateOrder(order);
 
-        return ProcessPaymentResult.from(order, user);
+        // 3) 실제 결제 흐름은 Kafka 이벤트 체인으로 수행 (non-blocking)
+        await this.orderKafkaProducer.publishOrderProcessing({
+          orderId: cmd.orderId,
+          userId: cmd.userId,
+          couponId: cmd.couponId || null,
+          items: orderItems.map((item) => ({
+            productOptionId: item.productOptionId,
+            productName: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        });
+
+        return ProcessPaymentResult.from(order);
       },
       { ttl: 10000 },
     );

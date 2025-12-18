@@ -12,8 +12,10 @@ import {
 } from '@/coupon/infrastructure/coupon.repository';
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
 import { CouponController } from '@/coupon/presentation/coupon.controller';
-import { OnOrderProcessingListener } from './application/listeners/on-order-processing.listener';
-import { OnOrderProcessingFailListener } from './application/listeners/on-order-fail.listener';
+import { CouponKafkaProducer } from '@/coupon/infrastructure/coupon.kafka.producer';
+import { CouponOrderProcessingKafkaConsumer } from '@/coupon/presentation/consumers/order-processing.kafka.consumer';
+import { CouponOrderProcessingFailKafkaConsumer } from '@/coupon/presentation/consumers/order-processing-fail.kafka.consumer';
+import { CouponOrderPaymentFailKafkaConsumer } from '@/coupon/presentation/consumers/order-payment-fail.kafka.consumer';
 
 /**
  * Coupon Module
@@ -44,9 +46,11 @@ import { OnOrderProcessingFailListener } from './application/listeners/on-order-
     IssueCouponUseCase,
     GetUserCouponsUseCase,
 
-    // Event Listeners
-    OnOrderProcessingListener,
-    OnOrderProcessingFailListener,
+    // Kafka Producer/Consumers
+    CouponKafkaProducer,
+    CouponOrderProcessingKafkaConsumer,
+    CouponOrderProcessingFailKafkaConsumer,
+    CouponOrderPaymentFailKafkaConsumer,
   ],
   exports: [
     CouponDomainService,

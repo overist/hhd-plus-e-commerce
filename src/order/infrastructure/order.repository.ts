@@ -87,6 +87,9 @@ export class OrderRepository implements IOrderRepository {
     const updated = await this.prismaClient.orders.update({
       where: { id: BigInt(order.id) },
       data: {
+        coupon_id: order.couponId,
+        discount_amount: order.discountAmount,
+        final_amount: order.finalAmount,
         status: order.status.value, // OrderStatus VO에서 문자열 추출
         paid_at: order.paidAt,
         updated_at: order.updatedAt,
