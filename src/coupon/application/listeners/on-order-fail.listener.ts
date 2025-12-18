@@ -1,10 +1,12 @@
 // core
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 
 // event
 import { OrderProcessingFailEvent } from '@/order/application/events/order-processing-fail.event';
 import { OrderPaymentFailEvent } from '@/order/application/events/order-payment-fail.event';
+import { OrderProcessingFailDoneEvent } from '@/order/application/events/order-processing-fail-done.event';
+import { OrderPaymentFailDoneEvent } from '@/order/application/events/order-payment-fail-done.event';
 
 // service
 import { CouponRedisService } from '@/coupon/infrastructure/coupon.redis.service';
@@ -21,6 +23,7 @@ export class OnOrderProcessingFailListener {
   constructor(
     private readonly couponRedisService: CouponRedisService,
     private readonly couponService: CouponDomainService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
   private readonly logger = new Logger(
     'coupon:' + OnOrderProcessingFailListener.name,
@@ -37,6 +40,10 @@ export class OnOrderProcessingFailListener {
 
     // 쿠폰 미적용 주문인 경우 스킵
     if (!couponId) {
+      this.eventEmitter.emit(
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        new OrderProcessingFailDoneEvent(orderId, 'coupon'),
+      );
       return;
     }
 
@@ -44,6 +51,11 @@ export class OnOrderProcessingFailListener {
     if (failedListenerName === 'UseUserCouponByOrder') {
       this.logger.log(
         `[onOrderProcessingFail] 쿠폰 리스너 자체 실패로 롤백 스킵 - orderId: ${orderId}`,
+      );
+
+      this.eventEmitter.emit(
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        new OrderProcessingFailDoneEvent(orderId, 'coupon'),
       );
       return;
     }
@@ -54,6 +66,7 @@ export class OnOrderProcessingFailListener {
       );
 
       await this.couponRedisService.cancelCouponUse(userId, couponId, orderId);
+      await this.couponService.deleteUserCouponByOrderId(orderId);
 
       this.logger.log(
         `[onOrderProcessingFail] 쿠폰 사용 롤백 완료 - orderId: ${orderId}, userId: ${userId}, couponId: ${couponId}`,
@@ -64,6 +77,11 @@ export class OnOrderProcessingFailListener {
         error,
       );
       // 보상 트랜잭션 실패는 로깅 후 별도 처리 필요 (알림, 재시도 큐 등)
+    } finally {
+      this.eventEmitter.emit(
+        OrderProcessingFailDoneEvent.EVENT_NAME,
+        new OrderProcessingFailDoneEvent(orderId, 'coupon'),
+      );
     }
   }
 
@@ -79,6 +97,10 @@ export class OnOrderProcessingFailListener {
 
     // 쿠폰 미적용 주문인 경우 스킵
     if (!couponId) {
+      this.eventEmitter.emit(
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        new OrderPaymentFailDoneEvent(orderId, 'coupon'),
+      );
       return;
     }
 
@@ -99,6 +121,11 @@ export class OnOrderProcessingFailListener {
         error,
       );
       // 보상 트랜잭션 실패는 로깅 후 별도 처리 필요 (알림, 재시도 큐 등)
+    } finally {
+      this.eventEmitter.emit(
+        OrderPaymentFailDoneEvent.EVENT_NAME,
+        new OrderPaymentFailDoneEvent(orderId, 'coupon'),
+      );
     }
   }
 }
