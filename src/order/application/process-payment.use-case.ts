@@ -1,16 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OrderDomainService } from '@/order/domain/services/order.service';
 import { RedisLockService } from '@common/redis-lock-manager/redis.lock.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 // dto
 import {
   ProcessPaymentCommand,
   ProcessPaymentResult,
 } from './dto/process-payment.dto';
-
-// events
-import { OrderProcessingEvent } from '@/order/application/events/order-processing.event';
+import { OrderKafkaProducer } from '@/order/infrastructure/order.kafka.producer';
 
 @Injectable()
 export class ProcessPaymentUseCase {
@@ -18,7 +15,7 @@ export class ProcessPaymentUseCase {
 
   constructor(
     private readonly orderService: OrderDomainService,
-    private readonly eventEmitter: EventEmitter2,
+    private readonly orderKafkaProducer: OrderKafkaProducer,
     private readonly redisLockService: RedisLockService,
   ) {}
 
@@ -56,18 +53,18 @@ export class ProcessPaymentUseCase {
         order.beginPaymentProcessing();
         await this.orderService.updateOrder(order);
 
-        // 3) 실제 결제 흐름은 이벤트 체인으로 수행 (non-blocking)
-        // EventEmitter2.emit은 async 리스너를 await 하지 않음
-        this.eventEmitter.emit(
-          OrderProcessingEvent.EVENT_NAME,
-          new OrderProcessingEvent(
-            cmd.orderId,
-            cmd.userId,
-            cmd.couponId || null,
-            order,
-            orderItems,
-          ),
-        );
+        // 3) 실제 결제 흐름은 Kafka 이벤트 체인으로 수행 (non-blocking)
+        await this.orderKafkaProducer.publishOrderProcessing({
+          orderId: cmd.orderId,
+          userId: cmd.userId,
+          couponId: cmd.couponId || null,
+          items: orderItems.map((item) => ({
+            productOptionId: item.productOptionId,
+            productName: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        });
 
         return ProcessPaymentResult.from(order);
       },
