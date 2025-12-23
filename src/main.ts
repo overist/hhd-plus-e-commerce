@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import '@common/monitoring/otel.metrics';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -12,6 +13,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DomainExceptionFilter } from '@common/exception/domain-exception.filter';
 import { ApplicationExceptionFilter } from '@common/exception/application-exception.filter';
 import { RepositoryExceptionFilter } from '@common/exception';
+import { MetricsInterceptor } from '@common/metrics/metrics.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -31,6 +33,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Prometheus Metrics (HTTP latency)
+  app.useGlobalInterceptors(new MetricsInterceptor());
 
   // Redis Session Store (세션 전용 Redis)
   const redisClient = createClient({
