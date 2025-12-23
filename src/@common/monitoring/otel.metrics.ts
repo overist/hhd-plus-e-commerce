@@ -5,6 +5,7 @@ import {
   PeriodicExportingMetricReader,
 } from '@opentelemetry/sdk-metrics';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+import * as os from 'os';
 
 const collectorUrl =
   process.env.OTEL_COLLECTOR_METRICS_URL ||
@@ -18,6 +19,12 @@ const metricReader = new PeriodicExportingMetricReader({
 });
 
 const meterProvider = new MeterProvider({
+  resource: {
+    attributes: {
+      'service.name': 'hhplus-ecommerce-app',
+      'service.instance.id': os.hostname(),
+    },
+  } as any,
   views: [
     {
       instrumentType: InstrumentType.HISTOGRAM,
