@@ -15,13 +15,16 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const session = request.session;
 
-    const userIdParam = request.params.userId || request.body.userId;
+    const userIdParam = request.params?.userId || request.body?.userId;
+
+    // 부하테스트를 위한 예외 처리
+    if (process.env.NODE_ENV === 'stage') return true;
 
     if (!session || !session.userId) {
       throw new UnauthorizedException('로그인이 필요합니다');
     }
 
-    if (session.userId !== Number(userIdParam)) {
+    if (userIdParam !== undefined && session.userId !== Number(userIdParam)) {
       throw new UnauthorizedException('권한이 없습니다');
     }
 

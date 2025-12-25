@@ -10,7 +10,7 @@
  *   pnpm install && pnpm prisma generate && pnpm start:dev
  *
  *   # 테스트 실행
- *   k6 run k6/top-products-cache.script.js
+ *   k6 run k6/cache.get-top-products.script.js
  */
 
 import http from 'k6/http';

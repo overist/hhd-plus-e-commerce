@@ -1,0 +1,38 @@
+receivers:
+  # 1. Docker 데몬에서 직접 메트릭 수집
+  docker_stats:
+    endpoint: 'unix:///var/run/docker.sock'
+    timeout: 30s
+    collection_interval: 10s
+    # 모든 컨테이너 메트릭 수집
+    metrics:
+      container.cpu.usage.total:
+        enabled: true
+      container.memory.usage.total:
+        enabled: true
+      container.network.io.usage.rx_bytes:
+        enabled: true
+      container.network.io.usage.tx_bytes:
+        enabled: true
+
+  # 2. 애플리케이션에서 OTLP로 보낸 메트릭 수집
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+
+exporters:
+  # 2. 수집한 데이터를 Prometheus 포맷으로 노출
+  prometheus:
+    endpoint: '0.0.0.0:8889'
+    namespace: 'otel' # 메트릭 앞에 otel_ 이 붙음
+    resource_to_telemetry_conversion:
+      enabled: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [docker_stats, otlp]
+      exporters: [prometheus]

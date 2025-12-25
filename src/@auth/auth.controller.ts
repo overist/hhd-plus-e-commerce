@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PrismaService } from '@common/prisma-manager/prisma.service';
 import { SignupResponseDto } from './dto/signup.dto';
 import { LoginRequestDto, LoginResponseDto } from './dto/login.dto';
+import * as crypto from 'crypto';
 
 /**
  * Auth Controller (테스트용 모듈) - 서비리스 등으로 대체 필요
@@ -39,12 +40,18 @@ export class AuthController {
   })
   @ApiResponse({ status: 500, description: '서버 오류' })
   async signup(@Session() session: any): Promise<SignupResponseDto> {
+    const initialBalance = process.env.NODE_ENV === 'stage' ? 1_000_000_000 : 0; // 부하 테스트용
+
     // 사용자 생성 (초기 잔액 0)
     const user = await this.prisma.users.create({
       data: {
-        balance: 0,
+        balance: initialBalance,
       },
     });
+
+    // 임의로 해싱 부하 추가 (부하 테스트용)
+    const password = crypto.randomBytes(16).toString('hex');
+    await crypto.subtle.digest('SHA-256', Buffer.from(password));
 
     // 세션에 userId 저장
     session.userId = user.id;

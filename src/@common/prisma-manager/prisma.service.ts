@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { AsyncLocalStorage } from 'async_hooks';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { TransactionOptions } from './prisma-transaction.types';
@@ -8,6 +13,9 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  private readonly logger = new Logger(PrismaService.name);
+  private readonly maxConnectAttempts = 10;
+  private readonly retryDelayMs = 1500;
   private readonly txStorage =
     new AsyncLocalStorage<Prisma.TransactionClient>();
 
@@ -42,10 +50,34 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    await this.$connect();
+    await this.connectWithRetry();
   }
 
   async onModuleDestroy() {
     await this.$disconnect();
+  }
+
+  private async connectWithRetry() {
+    for (let attempt = 1; attempt <= this.maxConnectAttempts; attempt++) {
+      try {
+        await this.$connect();
+        this.logger.log('Prisma connected to the database');
+        return;
+      } catch (error) {
+        const message = `Prisma connection failed (attempt ${attempt}/${this.maxConnectAttempts})`;
+        const errorMessage = error instanceof Error ? error.message : 'unknown';
+        const trace = error instanceof Error ? error.stack : undefined;
+        if (attempt === this.maxConnectAttempts) {
+          this.logger.error(`${message}: ${errorMessage}`, trace);
+          throw error;
+        }
+        this.logger.warn(`${message}: ${errorMessage}`);
+        await this.delay(this.retryDelayMs);
+      }
+    }
+  }
+
+  private delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

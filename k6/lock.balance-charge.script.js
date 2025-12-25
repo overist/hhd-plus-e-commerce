@@ -1,4 +1,18 @@
 /* eslint-disable no-undef */
+/**
+ * Balance Charge with Lock 성능 테스트 (분산락, 비관락, 낙관락별 성능 비교)
+ *
+ * 사용법:
+ *   # 인프라 실행
+ *   pnpm infra:up
+ *
+ *   # 앱 실행 (락 사용은 user repo impl 코드를 알아서 수정)
+ *   pnpm install && pnpm prisma generate && pnpm start:dev
+ *
+ *   # 테스트 실행
+ *   k6 run k6/lock.balance-charge.script.js
+ */
+
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';

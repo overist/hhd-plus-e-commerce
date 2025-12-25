@@ -33,6 +33,11 @@ services:
       interval: 5s
       timeout: 300s
       retries: 100
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   # Redis (통합: 세션, 캐시, 분산락, NoSQL)
   redis:
@@ -47,6 +52,31 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # Redis Seed (쿠폰 등 초기 데이터)
+  redis-seed:
+    image: redis:8.4.0
+    container_name: scale-redis-seed
+    restart: 'no'
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./infra/initredis/seed-coupons.sh:/seed/seed-coupons.sh:ro
+    entrypoint:
+      [
+        '/bin/sh',
+        '-c',
+        'tr -d "\\r" < /seed/seed-coupons.sh > /tmp/seed.sh && sh /tmp/seed.sh',
+      ]
 
   # Kafka Cluster (3 nodes)
   kafka-1:
@@ -66,6 +96,11 @@ services:
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
     volumes:
       - kafka_data_1:/tmp/kraft-combined-logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   kafka-2:
     image: apache/kafka:3.7.0
@@ -84,6 +119,11 @@ services:
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
     volumes:
       - kafka_data_2:/tmp/kraft-combined-logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   kafka-3:
     image: apache/kafka:3.7.0
@@ -102,6 +142,129 @@ services:
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
     volumes:
       - kafka_data_3:/tmp/kraft-combined-logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # ============================================
+  # Monitoring (Prometheus + Grafana)
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: scale-prometheus
+    restart: unless-stopped
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: scale-grafana
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - influxdb
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: scale-influxdb
+    restart: unless-stopped
+    ports:
+      - '8086:8086'
+    environment:
+      INFLUXDB_DB: k6
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: admin1234
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://localhost:8086/ping',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ['--config=/etc/otel-collector-config.yaml']
+    volumes:
+      - ./infra/monitoring/otel/otel-config.yml:/etc/otel-collector-config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - '8889:8889'
+    user: '0:0'
+
+  # MySQL Exporter
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.16.0
+    container_name: scale-mysqld-exporter
+    restart: unless-stopped
+    command:
+      - '--config.my-cnf=/etc/mysql_exporter/my.cnf'
+    volumes:
+      - ./infra/monitoring/mysql/my.cnf:/etc/mysql_exporter/my.cnf:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+    labels:
+      prometheus_scrape: 'true'
+      prometheus_job: 'mysql'
+      prometheus_port: '9104'
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: scale-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: 'redis://redis:6379'
+    depends_on:
+      redis:
+        condition: service_healthy
+    labels:
+      prometheus_scrape: 'true'
+      prometheus_job: 'redis'
+      prometheus_port: '9121'
+
+  # Kafka Exporter
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.8.0
+    container_name: scale-kafka-exporter
+    restart: unless-stopped
+    command:
+      - '--kafka.server=kafka-1:9092'
+      - '--kafka.server=kafka-2:9092'
+      - '--kafka.server=kafka-3:9092'
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    labels:
+      prometheus_scrape: 'true'
+      prometheus_job: 'kafka'
+      prometheus_port: '9308'
 
   # ============================================
   # Load Balancer (Nginx)
@@ -152,7 +315,7 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '0.5'
+          cpus: '1.0'
           memory: 512M
 
 networks:

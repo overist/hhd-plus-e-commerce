@@ -30,34 +30,34 @@ INSERT INTO products (name, description, price, category, is_available) VALUES
 -- SAMPLE PRODUCT OPTIONS (각 상품당 2-3개 옵션)
 INSERT INTO product_options (product_id, color, size, stock, reserved_stock) VALUES
     -- 나이키 에어맥스 옵션
-    (1, 'WHITE', '270', 50, 0),     -- option_id: 1
-    (1, 'BLACK', '270', 30, 0),     -- option_id: 2
-    (1, 'WHITE', '280', 20, 0),     -- option_id: 3
+    (1, 'WHITE', '270', 100000, 0),     -- option_id: 1
+    (1, 'BLACK', '270', 100000, 0),     -- option_id: 2
+    (1, 'WHITE', '280', 100000, 0),     -- option_id: 3
     -- 아디다스 울트라부스트 옵션
-    (2, 'GRAY', '265', 25, 0),      -- option_id: 4
-    (2, 'NAVY', '270', 15, 0),      -- option_id: 5
+    (2, 'GRAY', '265', 100000, 0),      -- option_id: 4
+    (2, 'NAVY', '270', 100000, 0),      -- option_id: 5
     -- 폴로 라운드티 옵션
-    (3, 'WHITE', 'M', 100, 0),      -- option_id: 6
-    (3, 'WHITE', 'L', 80, 0),       -- option_id: 7
-    (3, 'NAVY', 'M', 60, 0),        -- option_id: 8
+    (3, 'WHITE', 'M', 100000, 0),      -- option_id: 6
+    (3, 'WHITE', 'L', 100000, 0),       -- option_id: 7
+    (3, 'NAVY', 'M', 100000, 0),        -- option_id: 8
     -- 리바이스 501 옵션
-    (4, 'BLUE', '32', 40, 0),       -- option_id: 9
-    (4, 'BLUE', '34', 35, 0),       -- option_id: 10
+    (4, 'BLUE', '32', 100000, 0),       -- option_id: 9
+    (4, 'BLUE', '34', 100000, 0),       -- option_id: 10
     -- 애플 에어팟 프로 옵션
-    (5, 'WHITE', 'ONE', 100, 0),    -- option_id: 11
+    (5, 'WHITE', 'ONE', 100000, 0),    -- option_id: 11
     -- 삼성 갤럭시 버즈 옵션
-    (6, 'BLACK', 'ONE', 50, 0),     -- option_id: 12
-    (6, 'WHITE', 'ONE', 45, 0),     -- option_id: 13
+    (6, 'BLACK', 'ONE', 100000, 0),     -- option_id: 12
+    (6, 'WHITE', 'ONE', 100000, 0),     -- option_id: 13
     -- 노스페이스 패딩 옵션
-    (7, 'BLACK', 'M', 20, 0),       -- option_id: 14
-    (7, 'BLACK', 'L', 15, 0),       -- option_id: 15
-    (7, 'NAVY', 'M', 10, 0),        -- option_id: 16
+    (7, 'BLACK', 'M', 100000, 0),       -- option_id: 14
+    (7, 'BLACK', 'L', 100000, 0),       -- option_id: 15
+    (7, 'NAVY', 'M', 100000, 0),        -- option_id: 16
     -- 언더아머 반바지 옵션
-    (8, 'BLACK', 'M', 70, 0),       -- option_id: 17
-    (8, 'GRAY', 'L', 60, 0),        -- option_id: 18
+    (8, 'BLACK', 'M', 100000, 0),       -- option_id: 17
+    (8, 'GRAY', 'L', 100000, 0),        -- option_id: 18
     -- 뉴발란스 993 옵션
-    (9, 'GRAY', '270', 30, 0),      -- option_id: 19
-    (9, 'GRAY', '280', 25, 0),      -- option_id: 20
+    (9, 'GRAY', '270', 100000, 0),      -- option_id: 19
+    (9, 'GRAY', '280', 100000, 0),      -- option_id: 20
     -- 컨버스 척테일러 옵션 (판매 중지 상품)
     (10, 'BLACK', '260', 0, 0);     -- option_id: 21
 
