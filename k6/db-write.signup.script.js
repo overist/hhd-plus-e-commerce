@@ -2,9 +2,15 @@
 /**
  * Signup 성능 테스트 (DB Insert 부하 측정)
  *
- * 사용법:
+ * 테스트 실행:
+ *   # 인프라 실행
  *   pnpm infra:up:stage
- *   k6 run k6/signup.script.js -e SCENARIO=peak
+ * 
+ *   # 테스트 실행
+K6_OUT=influxdb=http://admin:admin1234@210.124.110.5:8086/k6 \
+k6 run k6/db-write.signup.script.js \
+-e SCENARIO=peak \
+-e BASE_URL=http://210.124.110.5:3000
  */
 
 import http from 'k6/http';

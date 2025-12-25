@@ -7,3 +7,14 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: false
+  - name: InfluxDB-k6
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: k6
+    user: admin
+    secureJsonData:
+      password: admin1234
+    jsonData:
+      httpMode: POST
+    editable: false

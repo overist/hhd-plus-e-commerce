@@ -173,6 +173,36 @@ services:
       - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
+      - influxdb
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: scale-influxdb
+    restart: unless-stopped
+    ports:
+      - '8086:8086'
+    environment:
+      INFLUXDB_DB: k6
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: admin1234
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://localhost:8086/ping',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   # OpenTelemetry Collector
   otel-collector:
