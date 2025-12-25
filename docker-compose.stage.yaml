@@ -37,7 +37,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 512M
 
   # Redis (통합: 세션, 캐시, 분산락, NoSQL)
   redis:
@@ -100,7 +100,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 512M
 
   kafka-2:
     image: apache/kafka:3.7.0
@@ -123,7 +123,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 512M
 
   kafka-3:
     image: apache/kafka:3.7.0
@@ -146,7 +146,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 512M
 
   # ============================================
   # Monitoring (Prometheus + Grafana)
