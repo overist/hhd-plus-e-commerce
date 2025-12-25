@@ -40,10 +40,12 @@ export class AuthController {
   })
   @ApiResponse({ status: 500, description: '서버 오류' })
   async signup(@Session() session: any): Promise<SignupResponseDto> {
+    const initialBalance = process.env.NODE_ENV === 'stage' ? 1_000_000_000 : 0; // 부하 테스트용
+
     // 사용자 생성 (초기 잔액 0)
     const user = await this.prisma.users.create({
       data: {
-        balance: 0,
+        balance: initialBalance,
       },
     });
 
