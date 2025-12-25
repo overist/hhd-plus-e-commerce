@@ -7,7 +7,9 @@ NestJS 기반 이커머스 백엔드 시스템
 - **Framework**: NestJS
 - **Database**: MySQL 8.0 (InnoDB, MVCC)
 - **ORM**: Prisma
-- **EDA**: EventEmitter2 (`@nestjs/event-emitter`)
+- **EDA**:
+  - **Kafka 기반 EDA**: kafkajs (Choreography Saga)
+  - **내부 이벤트**: EventEmitter2 (`@nestjs/event-emitter`) (도메인 내부/브리지 트리거)
 - **Redis**
   - **NoSQL/Session**: 범용 Redis 클라이언트 (`src/@common/redis/*`, `main.ts` 세션 스토어)
   - **Cache**: `@nestjs/cache-manager` + Keyv (namespace: `cache`)
@@ -86,22 +88,25 @@ AddCartResponse    ←      AddCartResult       (fromDomain)
 
 ---
 
-## 이벤트 기반 결제 (Orchestration Saga)
+## 이벤트 기반 결제 (Kafka Choreography Saga)
 
-결제는 **오케스트레이션 패턴의 Saga**로 구성되어 있습니다.
-`ProcessPaymentUseCase`가 단계 전환과 결과 검증(동기 `emitAsync`)을 담당하고, 실패 시 `*.fail` 이벤트로 **보상 트랜잭션**을 트리거합니다.
+결제는 Kafka 토픽을 통해 각 도메인이 이벤트를 구독/발행하며 진행되는 **Choreography Saga**로 구성되어 있습니다.
+병렬 처리 결과(재고/쿠폰)를 취합하기 위해 Redis 기반 Aggregator(State Store)를 사용합니다.
 
 ```
-1) order.processing (emitAsync)  - 재고 확정/쿠폰 사용
-2) order.payment    (emitAsync)  - 잔액 차감
-3) order.processed  (emit)       - 외부 전송/랭킹 집계 (부가 로직)
+1) order.processing               - 결제 프로세스 시작 (재고/쿠폰 병렬 처리 + 집계 init)
+2) order.processing.*.success     - 재고/쿠폰 성공 이벤트
+3) order.processing.success       - 집계 완료 후 결제 단계로 진행
+4) order.payment                  - 잔액 차감 요청
+5) order.payment.success          - 결제 완료
+6) order.processed                - 결제 완료 후 부가 작업(외부 전송/집계 등)
 
 실패 시
   - order.processing.fail / order.payment.fail
   - 각 도메인이 "자기 트랜잭션"으로 자율 롤백(Compensation)
 ```
 
-관련 문서: [EVENT-DRIVEN-ARCHITECTURE](docs/EVENT-DRIVEN-ARCHITECTURE.md), [EVENT-FLOW-DIAGRAM](docs/EVENT-FLOW-DIAGRAM.md)
+관련 문서: [KAFKA-EVENT-DRIVEN-ARCHITECTURE](docs/KAFKA-EVENT-DRIVEN-ARCHITECTURE.md), [KAFKA-EVENT-FLOW-DIAGRAM](docs/KAFKA-EVENT-FLOW-DIAGRAM.md)
 
 ---
 
@@ -204,13 +209,21 @@ pnpm start:dev
 
 - 아키텍처: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - EDA:
-  - [docs/EVENT-DRIVEN-ARCHITECTURE.md](docs/EVENT-DRIVEN-ARCHITECTURE.md)
-  - [docs/EVENT-FLOW-DIAGRAM.md](docs/EVENT-FLOW-DIAGRAM.md)
+  - (Kafka) [docs/KAFKA-EVENT-DRIVEN-ARCHITECTURE.md](docs/KAFKA-EVENT-DRIVEN-ARCHITECTURE.md)
+  - (Kafka) [docs/KAFKA-EVENT-FLOW-DIAGRAM.md](docs/KAFKA-EVENT-FLOW-DIAGRAM.md)
+  - (Kafka) [docs/KAFKA_COMPONENTS_INTRODUCE.md](docs/KAFKA_COMPONENTS_INTRODUCE.md)
+  - (Kafka) [docs/KAFKA_EXTERNAL_PLATFORM_DESIGN.md](docs/KAFKA_EXTERNAL_PLATFORM_DESIGN.md)
+  - (EventEmitter2) [docs/EVENT-DRIVEN-ARCHITECTURE.md](docs/EVENT-DRIVEN-ARCHITECTURE.md)
+  - (EventEmitter2) [docs/EVENT-FLOW-DIAGRAM.md](docs/EVENT-FLOW-DIAGRAM.md)
+  - (Choreography 패턴 정리) [docs/CHOREOGRAPHY-ARCHITECTURE.md](docs/CHOREOGRAPHY-ARCHITECTURE.md)
+  - (Choreography 흐름도) [docs/CHOREOGRAPHY-FLOW-DIAGRAM.md](docs/CHOREOGRAPHY-FLOW-DIAGRAM.md)
 - Redis Lock 분석:
   - [docs/REDIS_LOCK_TIMELINE.md](docs/REDIS_LOCK_TIMELINE.md)
   - [docs/REDIS_LOCK_PERFORMANCE.md](docs/REDIS_LOCK_PERFORMANCE.md)
   - [docs/REDIS_LOCK_LOG_ANALYSIS.md](docs/REDIS_LOCK_LOG_ANALYSIS.md)
 - 캐시 성능: [docs/CACHE_PERFORMANCE_REPORT.md](docs/CACHE_PERFORMANCE_REPORT.md)
+- 장애 대응/운영 보고서:
+  - [docs/STRESS_TEST_SYSTEM_FAILURE_REPORT.md](docs/STRESS_TEST_SYSTEM_FAILURE_REPORT.md)
 - Spec 및 요구사항
   - API 요구사항: [docs/api/requirements.md](docs/api/requirements.md)
   - API 명세서: [docs/api/api-specification.md](docs/api/api-specification.md)
