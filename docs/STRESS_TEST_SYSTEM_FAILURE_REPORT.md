@@ -111,13 +111,13 @@
   - Otel 지표가 아닌 프로세스 메모리 사용량 지표 추가 활용 권장
   - 알림 채널 : Slack / Grafana Oncall
 
-### 1,000 RPS 장시간 테스트 (20분)
+#### 1,000 RPS 장시간 테스트 (20분)
 
 |                       Dashboard Result                        |                       InfluxDB Result                       |
 | :-----------------------------------------------------------: | :---------------------------------------------------------: |
 | ![dashboard](images/k6-redis-1000rps_endurance_dashboard.png) | ![influxdb](images/k6-redis-1000rps_endurance_influxdb.png) |
 
-- p95 응답시간: 70ms
+- p95 응답시간: 71ms
 - 오류율: 19분까지 0%, 19분 경과 후 100% 오류 발생
 - 장애 확인
   - 장시간 테스트 시 레디스 메모리 부족(Max 512MB)으로 인한 Redis Simple OOM 오류 발생
